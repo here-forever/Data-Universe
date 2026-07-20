@@ -24,19 +24,22 @@ describe("FluidDataDashboard", () => {
     expect(screen.getByText("内容投放归因")).toBeInTheDocument();
   });
 
-  test("collapses the navigation without removing its accessible controls", async () => {
+  test("resets the linked filters to the default view", async () => {
     const user = userEvent.setup();
-    const { container } = renderWithProviders(<FluidDataDashboard />);
+    renderWithProviders(<FluidDataDashboard />);
 
-    await user.click(screen.getByRole("button", { name: "折叠侧边栏" }));
+    await user.click(screen.getByRole("button", { name: "线上" }));
+    await user.click(screen.getByRole("button", { name: "本季度" }));
+    await user.click(screen.getByRole("button", { name: "重置" }));
 
-    expect(container.querySelector(".fluid-app")).toHaveClass("is-collapsed");
-    expect(
-      screen.getByRole("button", { name: "展开侧边栏" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "总览" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "全部渠道" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
+    expect(screen.getByRole("button", { name: "本月" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("华东零售渠道")).toBeInTheDocument();
   });
 });

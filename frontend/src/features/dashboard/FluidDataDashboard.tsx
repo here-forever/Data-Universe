@@ -10,27 +10,15 @@ import { CanvasRenderer } from "echarts/renderers";
 import {
   Activity,
   ArrowUpRight,
-  Bell,
   CalendarRange,
-  ChevronLeft,
-  ChevronRight,
-  Cloud,
-  Database,
   Download,
-  FileBarChart,
-  Grid2X2,
-  LayoutDashboard,
   ListFilter,
   MoreHorizontal,
   Plus,
   Radio,
   RotateCcw,
-  Search,
   ShieldCheck,
-  Sparkles,
-  Table2,
   UsersRound,
-  Workflow,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -48,15 +36,6 @@ registerEChartsModules([
   RadarChart,
   TooltipComponent,
 ]);
-
-const navigation: Array<{ label: string; icon: LucideIcon }> = [
-  { label: "总览", icon: Grid2X2 },
-  { label: "数据源", icon: Database },
-  { label: "数据集", icon: Table2 },
-  { label: "数据流", icon: Workflow },
-  { label: "仪表盘", icon: LayoutDashboard },
-  { label: "报表中心", icon: FileBarChart },
-];
 
 const periods: Period[] = ["本周", "本月", "本季度"];
 const channels: Channel[] = ["全部渠道", "线上", "直营"];
@@ -108,8 +87,6 @@ const tableRows = [
 ];
 
 export function FluidDataDashboard() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeNav, setActiveNav] = useState("总览");
   const [period, setPeriod] = useState<Period>("本月");
   const [activeChannel, setActiveChannel] = useState<Channel>("全部渠道");
   const scale = periodScale[period] * channelScale[activeChannel];
@@ -127,341 +104,230 @@ export function FluidDataDashboard() {
   };
 
   return (
-    <div className={sidebarCollapsed ? "fluid-app is-collapsed" : "fluid-app"}>
-      <AmbientBackdrop />
-      <aside className="sidebar" aria-label="主导航">
-        <div className="brand-lockup">
-          <div className="brand-mark">
-            <Sparkles size={18} strokeWidth={1.8} />
+    <div className="content dashboard-content">
+      <section className="page-heading">
+        <div>
+          <p className="eyebrow">
+            <span /> 晨间数据脉冲 · 实时更新
+          </p>
+          <h1>
+            你好，林予安<span>。</span>
+          </h1>
+          <p className="page-subtitle">让重要信号，在安静的流动里浮现。</p>
+        </div>
+        <div className="heading-actions">
+          <div className="period-picker" aria-label="时间范围">
+            {periods.map((item) => (
+              <button
+                className={period === item ? "is-selected" : ""}
+                key={item}
+                onClick={() => setPeriod(item)}
+                aria-pressed={period === item}
+                type="button"
+              >
+                {item}
+              </button>
+            ))}
           </div>
-          <div className="brand-copy">
-            <strong>雾流</strong>
-            <span>DATA ATELIER</span>
+          <button className="add-button" type="button">
+            <Plus size={17} />
+            新建分析
+          </button>
+        </div>
+      </section>
+
+      <section className="filter-ribbon glass-panel" aria-label="全局筛选">
+        <div className="filter-context">
+          <span className="filter-context-icon">
+            <CalendarRange size={16} />
+          </span>
+          <div>
+            <small>当前分析视图</small>
+            <strong>
+              {period} · {activeChannel}
+            </strong>
           </div>
         </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarCollapsed((current) => !current)}
-          type="button"
-          aria-label={sidebarCollapsed ? "展开侧边栏" : "折叠侧边栏"}
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight size={17} />
-          ) : (
-            <ChevronLeft size={17} />
-          )}
-        </button>
-
-        <nav className="sidebar-nav">
-          <p className="nav-caption">工作空间</p>
-          {navigation.map(({ label, icon: Icon }) => (
+        <div className="channel-filter" role="group" aria-label="渠道筛选">
+          {channels.map((channel) => (
             <button
-              className={
-                activeNav === label ? "nav-item is-active" : "nav-item"
-              }
-              key={label}
-              onClick={() => setActiveNav(label)}
-              aria-pressed={activeNav === label}
-              title={sidebarCollapsed ? label : undefined}
+              className={activeChannel === channel ? "is-active" : ""}
+              key={channel}
+              onClick={() => setActiveChannel(channel)}
+              aria-pressed={activeChannel === channel}
               type="button"
             >
-              <Icon size={18} strokeWidth={1.75} />
-              <span>{label}</span>
+              {channel}
             </button>
           ))}
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="storage-orb">
-            <Cloud size={17} />
-          </div>
-          <div className="storage-copy">
-            <span>云端存储</span>
-            <strong>72.8% 已使用</strong>
-          </div>
         </div>
-      </aside>
+        <div className="filter-feedback" aria-live="polite">
+          <span>
+            <Radio size={14} />
+            图表与资产表已联动
+          </span>
+          <button onClick={resetFilters} type="button">
+            <RotateCcw size={14} />
+            重置
+          </button>
+        </div>
+      </section>
 
-      <main className="workspace">
-        <header className="topbar">
-          <div className="crumbs">
-            <span>云析空间</span>
-            <i /> <strong>{activeNav}</strong>
+      <section className="kpi-grid" aria-label="核心指标">
+        <MetricCard
+          label="经营总览"
+          value={256840 * scale}
+          suffix="元"
+          trend="12.8%"
+          accent="blue"
+          icon={Activity}
+        />
+        <MetricCard
+          label="活跃访客"
+          value={16492 * scale}
+          suffix=""
+          trend="8.4%"
+          accent="teal"
+          icon={UsersRound}
+        />
+        <MetricCard
+          label="转化效率"
+          value={
+            (66.8 + (periodScale[period] - 1) * 2.4) *
+            (activeChannel === "全部渠道"
+              ? 1
+              : activeChannel === "线上"
+                ? 1.06
+                : 0.94)
+          }
+          suffix="%"
+          trend="4.1%"
+          accent="violet"
+          icon={Zap}
+          decimal
+        />
+        <MetricCard
+          label="数据健康度"
+          value={98.6}
+          suffix="%"
+          trend="稳定"
+          accent="pearl"
+          icon={ShieldCheck}
+          decimal
+        />
+      </section>
+
+      <section className="dashboard-grid">
+        <Panel
+          className="chart-panel line-panel"
+          title="经营趋势"
+          subtitle="收入与目标的柔性轨迹"
+          action="查看详情"
+        >
+          <FluidChart variant="line" period={period} channel={activeChannel} />
+        </Panel>
+        <Panel
+          className="chart-panel donut-panel"
+          title="渠道构成"
+          subtitle="点击环图聚焦渠道"
+        >
+          <FluidChart
+            variant="donut"
+            period={period}
+            channel={activeChannel}
+            onChannelSelect={setActiveChannel}
+          />
+        </Panel>
+        <Panel
+          className="chart-panel radar-panel"
+          title="经营感知"
+          subtitle="六维表现雷达"
+        >
+          <FluidChart variant="radar" period={period} channel={activeChannel} />
+        </Panel>
+        <Panel
+          className="chart-panel area-panel"
+          title="数据流速"
+          subtitle="每小时写入与处理量"
+          action="查看流向"
+        >
+          <FluidChart variant="area" period={period} channel={activeChannel} />
+        </Panel>
+        <RealtimePanel scale={scale} />
+      </section>
+
+      <section className="data-section glass-panel">
+        <div className="panel-heading table-heading">
+          <div>
+            <p className="panel-kicker">DATA PULSE</p>
+            <h2>当前关注的数据资产</h2>
           </div>
-          <div className="topbar-actions">
-            <button className="icon-button" aria-label="搜索" type="button">
-              <Search size={18} />
+          <div className="table-actions">
+            <button className="soft-button" type="button">
+              <ListFilter size={16} />
+              筛选
+            </button>
+            <button className="soft-button" type="button">
+              <Download size={16} />
+              导出
             </button>
             <button
-              className="icon-button has-dot"
-              aria-label="通知"
+              className="icon-button"
+              aria-label="更多表格操作"
               type="button"
             >
-              <Bell size={18} />
+              <MoreHorizontal size={18} />
             </button>
-            <div className="user-chip">
-              <div className="avatar">林</div>
-              <div>
-                <strong>林予安</strong>
-                <span>分析负责人</span>
-              </div>
-            </div>
           </div>
-        </header>
-
-        <div className="content">
-          <section className="page-heading">
-            <div>
-              <p className="eyebrow">
-                <span /> 晨间数据脉冲 · 实时更新
-              </p>
-              <h1>
-                你好，林予安<span>。</span>
-              </h1>
-              <p className="page-subtitle">让重要信号，在安静的流动里浮现。</p>
-            </div>
-            <div className="heading-actions">
-              <div className="period-picker" aria-label="时间范围">
-                {periods.map((item) => (
-                  <button
-                    className={period === item ? "is-selected" : ""}
-                    key={item}
-                    onClick={() => setPeriod(item)}
-                    aria-pressed={period === item}
-                    type="button"
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-              <button className="add-button" type="button">
-                <Plus size={17} />
-                新建分析
-              </button>
-            </div>
-          </section>
-
-          <section className="filter-ribbon glass-panel" aria-label="全局筛选">
-            <div className="filter-context">
-              <span className="filter-context-icon">
-                <CalendarRange size={16} />
-              </span>
-              <div>
-                <small>当前分析视图</small>
-                <strong>
-                  {period} · {activeChannel}
-                </strong>
-              </div>
-            </div>
-            <div className="channel-filter" role="group" aria-label="渠道筛选">
-              {channels.map((channel) => (
-                <button
-                  className={activeChannel === channel ? "is-active" : ""}
-                  key={channel}
-                  onClick={() => setActiveChannel(channel)}
-                  aria-pressed={activeChannel === channel}
-                  type="button"
-                >
-                  {channel}
-                </button>
-              ))}
-            </div>
-            <div className="filter-feedback" aria-live="polite">
-              <span>
-                <Radio size={14} />
-                图表与资产表已联动
-              </span>
-              <button onClick={resetFilters} type="button">
-                <RotateCcw size={14} />
-                重置
-              </button>
-            </div>
-          </section>
-
-          <section className="kpi-grid" aria-label="核心指标">
-            <MetricCard
-              label="经营总览"
-              value={256840 * scale}
-              suffix="元"
-              trend="12.8%"
-              accent="blue"
-              icon={Activity}
-            />
-            <MetricCard
-              label="活跃访客"
-              value={16492 * scale}
-              suffix=""
-              trend="8.4%"
-              accent="teal"
-              icon={UsersRound}
-            />
-            <MetricCard
-              label="转化效率"
-              value={
-                (66.8 + (periodScale[period] - 1) * 2.4) *
-                (activeChannel === "全部渠道"
-                  ? 1
-                  : activeChannel === "线上"
-                    ? 1.06
-                    : 0.94)
-              }
-              suffix="%"
-              trend="4.1%"
-              accent="violet"
-              icon={Zap}
-              decimal
-            />
-            <MetricCard
-              label="数据健康度"
-              value={98.6}
-              suffix="%"
-              trend="稳定"
-              accent="pearl"
-              icon={ShieldCheck}
-              decimal
-            />
-          </section>
-
-          <section className="dashboard-grid">
-            <Panel
-              className="chart-panel line-panel"
-              title="经营趋势"
-              subtitle="收入与目标的柔性轨迹"
-              action="查看详情"
-            >
-              <FluidChart
-                variant="line"
-                period={period}
-                channel={activeChannel}
-              />
-            </Panel>
-            <Panel
-              className="chart-panel donut-panel"
-              title="渠道构成"
-              subtitle="点击环图聚焦渠道"
-            >
-              <FluidChart
-                variant="donut"
-                period={period}
-                channel={activeChannel}
-                onChannelSelect={setActiveChannel}
-              />
-            </Panel>
-            <Panel
-              className="chart-panel radar-panel"
-              title="经营感知"
-              subtitle="六维表现雷达"
-            >
-              <FluidChart
-                variant="radar"
-                period={period}
-                channel={activeChannel}
-              />
-            </Panel>
-            <Panel
-              className="chart-panel area-panel"
-              title="数据流速"
-              subtitle="每小时写入与处理量"
-              action="查看流向"
-            >
-              <FluidChart
-                variant="area"
-                period={period}
-                channel={activeChannel}
-              />
-            </Panel>
-            <RealtimePanel scale={scale} />
-          </section>
-
-          <section className="data-section glass-panel">
-            <div className="panel-heading table-heading">
-              <div>
-                <p className="panel-kicker">DATA PULSE</p>
-                <h2>当前关注的数据资产</h2>
-              </div>
-              <div className="table-actions">
-                <button className="soft-button" type="button">
-                  <ListFilter size={16} />
-                  筛选
-                </button>
-                <button className="soft-button" type="button">
-                  <Download size={16} />
-                  导出
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="更多表格操作"
-                  type="button"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>分析资产</th>
-                    <th>来源</th>
-                    <th>最后更新</th>
-                    <th>状态</th>
-                    <th>核心数值</th>
-                    <th aria-label="操作" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row) => (
-                    <tr key={row.name}>
-                      <td>
-                        <span className="asset-dot" />
-                        {row.name}
-                      </td>
-                      <td className="muted-cell">{row.source}</td>
-                      <td className="muted-cell">{row.updated}</td>
-                      <td>
-                        <span
-                          className={
-                            row.status === "待校验"
-                              ? "status-chip warning"
-                              : "status-chip"
-                          }
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="value-cell">{row.value}</td>
-                      <td>
-                        <button
-                          className="row-more"
-                          aria-label={`${row.name} 更多操作`}
-                          type="button"
-                        >
-                          <MoreHorizontal size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
         </div>
-      </main>
-    </div>
-  );
-}
-
-function AmbientBackdrop() {
-  return (
-    <div className="ambient" aria-hidden="true">
-      <span className="glow glow-one" />
-      <span className="glow glow-two" />
-      <span className="glow glow-three" />
-      <i className="particle particle-one" />
-      <i className="particle particle-two" />
-      <i className="particle particle-three" />
-      <i className="particle particle-four" />
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>分析资产</th>
+                <th>来源</th>
+                <th>最后更新</th>
+                <th>状态</th>
+                <th>核心数值</th>
+                <th aria-label="操作" />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row) => (
+                <tr key={row.name}>
+                  <td>
+                    <span className="asset-dot" />
+                    {row.name}
+                  </td>
+                  <td className="muted-cell">{row.source}</td>
+                  <td className="muted-cell">{row.updated}</td>
+                  <td>
+                    <span
+                      className={
+                        row.status === "待校验"
+                          ? "status-chip warning"
+                          : "status-chip"
+                      }
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="value-cell">{row.value}</td>
+                  <td>
+                    <button
+                      className="row-more"
+                      aria-label={`${row.name} 更多操作`}
+                      type="button"
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

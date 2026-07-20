@@ -1,17 +1,39 @@
 import { screen } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, test } from "vitest";
 
+import { useWorkspaceStore } from "../features/workspace/workspaceStore";
 import { renderWithProviders } from "../test/test-utils";
 import { AppShell } from "./AppShell";
 
 describe("AppShell", () => {
-  test("renders data workspace navigation", () => {
+  beforeEach(() => {
+    useWorkspaceStore.setState({ sidebarCollapsed: false });
+  });
+
+  test("renders the unified data workspace navigation", () => {
     renderWithProviders(<AppShell />);
 
-    expect(screen.getByRole("heading", { name: "Data Analysis System" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Workspace" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Data Sources" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "SQL Workspace" })).toBeInTheDocument();
-    expect(screen.getByText("Professional data analysis workbench")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "雾流数据工作台首页" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "总览" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "数据源" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "SQL 工作台" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "任务中心" })).toBeInTheDocument();
+  });
+
+  test("collapses the navigation while keeping links accessible", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+
+    await user.click(screen.getByRole("button", { name: "折叠侧边栏" }));
+
+    expect(
+      screen.getByRole("button", { name: "展开侧边栏" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "数据集" })).toBeInTheDocument();
   });
 });
