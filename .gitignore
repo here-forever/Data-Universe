@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+ENV/
+
+# Node
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+.npm/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Credentials and private material
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials*.json
+service-account*.json
+secrets/
+.secrets/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Local data and generated runtime files
+storage/
+uploads/
+tmp/
+temp/
+*.sqlite
+*.sqlite3
+
+# Worktrees
+.worktrees/
+worktrees/
+
+# Local agent state
+.agents/
+.codex/

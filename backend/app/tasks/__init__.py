@@ -1,0 +1,1 @@
+"""Task center domain module."""

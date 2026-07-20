@@ -1,0 +1,33 @@
+order_id,order_date,customer,segment,region,province,product_category,product,channel,quantity,unit_price,discount,revenue,cost,profit,returned
+1001,2026-01-05,Aurora Studio,Corporate,East,Zhejiang,Software,Analytics Pro,Online,3,1280,0.05,3648,1860,1788,false
+1002,2026-01-07,Northwind Market,SMB,North,Beijing,Hardware,Edge Gateway,Partner,2,2450,0.08,4508,3180,1328,false
+1003,2026-01-09,Lumen Health,Enterprise,South,Guangdong,Service,Data Cleaning Pack,Direct,5,680,0.00,3400,1550,1850,false
+1004,2026-01-12,Orchid Finance,Enterprise,East,Shanghai,Software,Dashboard Suite,Direct,4,1580,0.12,5561.6,2600,2961.6,false
+1005,2026-01-15,Harbor Retail,SMB,West,Sichuan,Hardware,Sensor Kit,Online,7,420,0.03,2851.8,1960,891.8,false
+1006,2026-01-17,Blue Peak Energy,Corporate,North,Tianjin,Service,SQL Advisory,Partner,2,3200,0.10,5760,2700,3060,false
+1007,2026-01-20,Maple Education,SMB,South,Fujian,Software,Analytics Pro,Online,1,1280,0.00,1280,620,660,true
+1008,2026-01-23,Silverline Media,Corporate,East,Jiangsu,Service,Data Cleaning Pack,Direct,3,680,0.05,1938,930,1008,false
+1009,2026-01-25,Zenith Logistics,Enterprise,West,Chongqing,Hardware,Edge Gateway,Partner,4,2450,0.15,8330,6360,1970,false
+1010,2026-01-28,Willow Foods,SMB,South,Guangxi,Software,Dashboard Suite,Online,2,1580,0.07,2938.8,1300,1638.8,false
+1011,2026-02-02,Aurora Studio,Corporate,East,Zhejiang,Service,SQL Advisory,Direct,1,3200,0.00,3200,1350,1850,false
+1012,2026-02-04,Northwind Market,SMB,North,Hebei,Software,Dashboard Suite,Online,2,1580,0.04,3033.6,1300,1733.6,false
+1013,2026-02-08,Lumen Health,Enterprise,South,Guangdong,Hardware,Sensor Kit,Partner,9,420,0.06,3553.2,2520,1033.2,false
+1014,2026-02-11,Orchid Finance,Enterprise,East,Shanghai,Service,Data Cleaning Pack,Direct,8,680,0.08,5004.8,2480,2524.8,false
+1015,2026-02-13,Harbor Retail,SMB,West,Yunnan,Software,Analytics Pro,Online,2,1280,0.05,2432,1240,1192,false
+1016,2026-02-15,Blue Peak Energy,Corporate,North,Beijing,Hardware,Edge Gateway,Direct,1,2450,0.00,2450,1590,860,false
+1017,2026-02-18,Maple Education,SMB,South,Fujian,Service,SQL Advisory,Partner,1,3200,0.12,2816,1350,1466,false
+1018,2026-02-20,Silverline Media,Corporate,East,Jiangsu,Software,Analytics Pro,Online,4,1280,0.10,4608,2480,2128,false
+1019,2026-02-22,Zenith Logistics,Enterprise,West,Sichuan,Service,Data Cleaning Pack,Direct,6,680,0.03,3957.6,1860,2097.6,false
+1020,2026-02-25,Willow Foods,SMB,South,Guangxi,Hardware,Sensor Kit,Online,5,420,0.00,2100,1400,700,true
+1021,2026-03-01,Aurora Studio,Corporate,East,Shanghai,Hardware,Sensor Kit,Partner,8,420,0.04,3225.6,2240,985.6,false
+1022,2026-03-03,Northwind Market,SMB,North,Tianjin,Service,Data Cleaning Pack,Direct,4,680,0.00,2720,1240,1480,false
+1023,2026-03-05,Lumen Health,Enterprise,South,Guangdong,Software,Dashboard Suite,Online,3,1580,0.05,4503,1950,2553,false
+1024,2026-03-08,Orchid Finance,Enterprise,East,Zhejiang,Hardware,Edge Gateway,Partner,2,2450,0.06,4606,3180,1426,false
+1025,2026-03-10,Harbor Retail,SMB,West,Chongqing,Service,SQL Advisory,Direct,1,3200,0.05,3040,1350,1690,false
+1026,2026-03-12,Blue Peak Energy,Corporate,North,Hebei,Software,Analytics Pro,Online,3,1280,0.08,3532.8,1860,1672.8,false
+1027,2026-03-15,Maple Education,SMB,South,Fujian,Hardware,Sensor Kit,Partner,10,420,0.12,3696,2800,896,false
+1028,2026-03-18,Silverline Media,Corporate,East,Jiangsu,Software,Dashboard Suite,Direct,2,1580,0.00,3160,1300,1860,false
+1029,2026-03-21,Zenith Logistics,Enterprise,West,Yunnan,Hardware,Edge Gateway,Partner,3,2450,0.10,6615,4770,1845,false
+1030,2026-03-24,Willow Foods,SMB,South,Guangxi,Service,Data Cleaning Pack,Online,7,680,0.05,4522,2170,2352,false
+1031,2026-03-27,Aurora Studio,Corporate,East,Zhejiang,Software,Analytics Pro,Direct,2,1280,0.00,2560,1240,1320,false
+1032,2026-03-30,Northwind Market,SMB,North,Beijing,Hardware,Sensor Kit,Online,6,420,0.02,2469.6,1680,789.6,false

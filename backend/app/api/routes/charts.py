@@ -1,0 +1,60 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
+
+from app.audit.repository import AuditRepository
+from app.audit.service import AuditService
+from app.auth.dependencies import get_current_user
+from app.auth.service import User
+from app.core.database import get_db_session
+from app.data_views.repository import DataViewRepository
+from app.data_views.service import DataViewService
+from app.tasks.repository import TaskRepository
+from app.tasks.service import TaskService
+from app.visualizations.repository import VisualizationRepository
+from app.visualizations.schemas import ChartCreateRequest, ChartListResponse, ChartResponse
+from app.visualizations.service import VisualizationService, to_chart_response
+
+router = APIRouter(prefix="/charts", tags=["charts"])
+
+
+def get_visualization_service(
+    session: Annotated[Session, Depends(get_db_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> VisualizationService:
+    audit = AuditService(AuditRepository(session), actor_id=current_user.id)
+    data_views = DataViewService(DataViewRepository(session), audit=audit)
+    tasks = TaskService(TaskRepository(session), initiator_id=current_user.id)
+    return VisualizationService(
+        repository=VisualizationRepository(session),
+        data_views=data_views,
+        audit=audit,
+        tasks=tasks,
+    )
+
+
+@router.post("", response_model=ChartResponse, status_code=status.HTTP_201_CREATED)
+def create_chart(
+    payload: ChartCreateRequest,
+    visualizations: Annotated[VisualizationService, Depends(get_visualization_service)],
+) -> ChartResponse:
+    return to_chart_response(visualizations.create_chart(payload))
+
+
+@router.get("", response_model=ChartListResponse)
+def list_charts(
+    project_id: str,
+    visualizations: Annotated[VisualizationService, Depends(get_visualization_service)],
+) -> ChartListResponse:
+    return ChartListResponse(
+        items=[to_chart_response(chart) for chart in visualizations.list_charts(project_id)]
+    )
+
+
+@router.get("/{chart_id}", response_model=ChartResponse)
+def get_chart(
+    chart_id: str,
+    visualizations: Annotated[VisualizationService, Depends(get_visualization_service)],
+) -> ChartResponse:
+    return to_chart_response(visualizations.get_chart(chart_id))
