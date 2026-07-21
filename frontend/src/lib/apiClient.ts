@@ -22,6 +22,11 @@ export interface ApiClient {
     params?: Record<string, string | number | boolean | null | undefined>,
   ): Promise<TResponse>;
   post<TResponse>(path: string, body?: unknown): Promise<TResponse>;
+  postBlob(
+    path: string,
+    body?: unknown,
+    params?: Record<string, string | number | boolean | null | undefined>,
+  ): Promise<{ blob: Blob; fileName: string | null }>;
   patch<TResponse>(path: string, body?: unknown): Promise<TResponse>;
   postForm<TResponse>(path: string, body: FormData): Promise<TResponse>;
 }
@@ -91,6 +96,32 @@ export function createApiClient({
       return readJsonResponse<TResponse>(response);
     },
 
+    async postBlob(
+      path: string,
+      body?: unknown,
+      params?: Record<string, string | number | boolean | null | undefined>,
+    ): Promise<{ blob: Blob; fileName: string | null }> {
+      const response = await fetcher(joinUrl(baseUrl, path, params), {
+        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: {
+          ...jsonHeaders,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new ApiError(await readErrorMessage(response), response.status);
+      }
+
+      return {
+        blob: await response.blob(),
+        fileName: readDownloadFileName(
+          response.headers.get("Content-Disposition"),
+        ),
+      };
+    },
+
     async patch<TResponse>(path: string, body?: unknown): Promise<TResponse> {
       const response = await fetcher(joinUrl(baseUrl, path), {
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -117,6 +148,13 @@ export function createApiClient({
       return readJsonResponse<TResponse>(response);
     },
   };
+}
+
+function readDownloadFileName(
+  contentDisposition: string | null,
+): string | null {
+  const match = contentDisposition?.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? null;
 }
 
 async function readJsonResponse<TResponse>(

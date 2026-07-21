@@ -69,7 +69,7 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
   return (
     <div
       aria-label="Chart preview"
-      className="h-80 rounded-md border border-line bg-white"
+      className="h-80 min-w-0 rounded-md border border-line bg-white"
       ref={chartRef}
     />
   );

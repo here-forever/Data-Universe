@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { CleaningWorkbenchPage } from "../features/cleaning/CleaningWorkbenchPage";
+import { AnalyticsWorkbenchPage } from "../features/analytics/AnalyticsWorkbenchPage";
 import { FluidDataDashboard } from "../features/dashboard/FluidDataDashboard";
 import { DataSourcesPage } from "../features/dataSources/DataSourcesPage";
 import { DataViewSourcePage } from "../features/dataViews/DataViewSourcePage";
@@ -45,6 +46,14 @@ export function AppRoutes() {
           element={
             <FeatureSurface>
               <CleaningWorkbenchPage />
+            </FeatureSurface>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <FeatureSurface>
+              <AnalyticsWorkbenchPage />
             </FeatureSurface>
           }
         />

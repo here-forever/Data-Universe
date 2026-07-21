@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 type ChartVariant = "line" | "area" | "donut" | "radar";
 type Period = "本周" | "本月" | "本季度";
@@ -129,10 +130,10 @@ export function FluidDataDashboard() {
               </button>
             ))}
           </div>
-          <button className="add-button" type="button">
+          <Link className="add-button" to="/analytics">
             <Plus size={17} />
             新建分析
-          </button>
+          </Link>
         </div>
       </section>
 

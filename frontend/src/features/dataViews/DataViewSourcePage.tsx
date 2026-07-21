@@ -37,6 +37,7 @@ import { DashboardPreview } from "./DashboardPreview";
 
 const DEFAULT_PROJECT_ID = "prj_demo";
 const PAGE_SIZE = 20;
+type LayoutMode = "dashboard" | "report" | "screen";
 
 interface DataViewSourcePageProps {
   mode: "charts" | "dashboards";
@@ -56,9 +57,7 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
   const [selectedDataViewId, setSelectedDataViewId] = useState<string | null>(
     targetDataViewId,
   );
-  const [layoutMode, setLayoutMode] = useState<"dashboard" | "report">(
-    "dashboard",
-  );
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("dashboard");
   const [selectedChartIds, setSelectedChartIds] = useState<string[]>([]);
   const [hasManualChartSelection, setHasManualChartSelection] = useState(false);
   const [chartState, setChartState] = useState<ChartBuilderState>(() =>
@@ -172,18 +171,28 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
         name:
           layoutMode === "dashboard"
             ? `${submittedProjectId} Dashboard`
-            : `${submittedProjectId} Report`,
+            : layoutMode === "screen"
+              ? `${submittedProjectId} Data Screen`
+              : `${submittedProjectId} Report`,
         layout: {
           mode: layoutMode,
           items: layoutChartIds.map((chartId, index) => ({
             chart_id: chartId,
-            x: layoutMode === "dashboard" ? (index % 2) * 6 : 0,
+            x:
+              layoutMode === "screen"
+                ? (index % 3) * 4
+                : layoutMode === "dashboard"
+                  ? (index % 2) * 6
+                  : 0,
             y:
-              layoutMode === "dashboard"
-                ? Math.floor(index / 2) * 4
-                : index * 6,
-            w: layoutMode === "dashboard" ? 6 : 12,
-            h: layoutMode === "dashboard" ? 4 : 6,
+              layoutMode === "screen"
+                ? Math.floor(index / 3) * 4
+                : layoutMode === "dashboard"
+                  ? Math.floor(index / 2) * 4
+                  : index * 6,
+            w:
+              layoutMode === "screen" ? 4 : layoutMode === "dashboard" ? 6 : 12,
+            h: layoutMode === "report" ? 6 : 4,
           })),
         },
       });
@@ -220,7 +229,7 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
   const Icon = isCharts ? BarChart3 : LayoutDashboard;
 
   return (
-    <section className="space-y-5">
+    <section className="min-w-0 space-y-5">
       <div className="flex flex-col gap-4 border-b border-line pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-medium text-cyan">
@@ -256,8 +265,8 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
         </form>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="rounded-md border border-line bg-panel shadow-panel">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
           <PanelHeader
             icon={<Icon className="h-4 w-4 text-brand" />}
             title="Data views"
@@ -284,7 +293,7 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
           </div>
         </aside>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <DataViewSummary dataView={selectedDataView} />
           {isCharts ? (
             <ChartResourcePanel
@@ -389,7 +398,7 @@ function ChartResourcePanel({
     (chartState.aggregation === "count" || chartState.metric.length > 0);
 
   return (
-    <div className="rounded-md border border-line bg-panel shadow-panel">
+    <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<BarChart3 className="h-4 w-4 text-brand" />}
         title="Chart builder"
@@ -556,13 +565,13 @@ function DashboardResourcePanel({
 }: {
   charts: ChartDefinition[];
   dashboards: DashboardDefinition[];
-  layoutMode: "dashboard" | "report";
+  layoutMode: LayoutMode;
   isLoading: boolean;
   error: Error | null;
   createdDashboard?: DashboardDefinition;
   createError: Error | null;
   isCreating: boolean;
-  onLayoutModeChange: (mode: "dashboard" | "report") => void;
+  onLayoutModeChange: (mode: LayoutMode) => void;
   selectedChartIds: string[];
   hasManualChartSelection: boolean;
   targetDashboardId: string | null;
@@ -585,13 +594,13 @@ function DashboardResourcePanel({
   }
 
   return (
-    <div className="rounded-md border border-line bg-panel shadow-panel">
+    <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Boxes className="h-4 w-4 text-brand" />}
         title="Dashboard and report builder"
       />
-      <div className="grid gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4">
           <DashboardPreview
             charts={charts}
             mode={layoutMode}
@@ -620,11 +629,12 @@ function DashboardResourcePanel({
               className="mt-2 h-10 w-full rounded-md border border-amber/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-2 focus:ring-amber/20"
               value={layoutMode}
               onChange={(event) =>
-                onLayoutModeChange(event.target.value as "dashboard" | "report")
+                onLayoutModeChange(event.target.value as LayoutMode)
               }
             >
               <option value="dashboard">Dashboard</option>
               <option value="report">Free report</option>
+              <option value="screen">Data screen</option>
             </select>
           </label>
           <div>
@@ -697,7 +707,9 @@ function ResourceList<T>({
     return <StateMessage title={emptyTitle} />;
   }
   return (
-    <div className="grid gap-2 md:grid-cols-2">{items.map(renderItem)}</div>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 md:grid-cols-2">
+      {items.map(renderItem)}
+    </div>
   );
 }
 
@@ -772,7 +784,7 @@ function DataViewSummary({ dataView }: { dataView: DataView | null }) {
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-4">
       <Metric
         label="Rows"
         value={dataView.row_count.toLocaleString()}
@@ -804,7 +816,7 @@ function PreviewPanel({
   const rows = preview?.rows ?? [];
 
   return (
-    <div className="rounded-md border border-line bg-panel shadow-panel">
+    <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Table2 className="h-4 w-4 text-brand" />}
         title="Data source preview"

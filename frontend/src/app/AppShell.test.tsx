@@ -22,6 +22,9 @@ describe("AppShell", () => {
     expect(
       screen.getByRole("link", { name: "SQL 工作台" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "分析工作台" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "任务中心" })).toBeInTheDocument();
   });
 

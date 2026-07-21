@@ -101,6 +101,34 @@ describe("apiClient", () => {
     });
   });
 
+  test("downloads binary responses with a server filename", async () => {
+    const blob = new Blob(["region,revenue\nEast,120"]);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => blob,
+      headers: new Headers({
+        "Content-Disposition": 'attachment; filename="sales_analysis.csv"',
+      }),
+    });
+    const client = createApiClient({
+      baseUrl: "http://localhost/api",
+      fetcher: fetchMock,
+    });
+
+    const result = await client.postBlob(
+      "/analytics/datasets/dataset_1/export",
+      { dimensions: ["region"] },
+      { format: "csv" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost/api/analytics/datasets/dataset_1/export?format=csv",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(result.fileName).toBe("sales_analysis.csv");
+    expect(result.blob).toBe(blob);
+  });
+
   test("patches JSON resources", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
