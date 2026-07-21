@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-07-16
+Last updated: 2026-07-21
 
 This document records what has already been implemented so the project can continue without losing context.
 
@@ -16,6 +16,8 @@ professional data analysis workspace
 ```
 
 Current implementation has moved beyond pure planning. The repository now has backend, frontend, Docker, database model, collaboration, import preview, formal dataset materialization, cleaning, SQL data views, chart/dashboard, audit/lineage hooks, task center foundations, and external database intake with preview, history, retry, and formal dataset materialization.
+
+The active product scope is now local-file-first. CSV/Excel intake is the only data-source workflow shown in the frontend; existing external database backend foundations are retained but paused from current product development.
 
 The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests.
 
@@ -82,6 +84,8 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - External import history/detail APIs backed by task records and retry metadata.
 - External database imports are connected to task center, operation logs, basic lineage, dataset preview, and dataset quality profiling.
 - Basic operation log and lineage records for implemented workflow actions.
+- Dataset analytics API with validated filters, multi-dimension grouped metrics, descriptive statistics, Pearson correlation, and single-feature linear regression.
+- CSV and Excel analysis-result export with audit records.
 - Persisted dataset fields and physical table name mapping.
 - Demo seed script that creates/reuses a fixed `prj_demo` project, imports example CSV data, creates a cleaned dataset, saves a SQL data view, saves charts, saves a dashboard, and keeps task/lineage traceability.
 
@@ -112,7 +116,7 @@ Initial core tables have been modeled and migrated:
 - Tailwind CSS tokens and base styling.
 - Basic app shell and navigation.
 - Dataset workspace page with project dataset list, schema, and paged preview.
-- Data source center page for local file intake, upload outcomes, dataset bridge links, and reserved connector states.
+- Data source center focused on local CSV/Excel intake, upload outcomes, failed-parse traceability, preview recovery, and formal dataset bridge links.
 - Import wizard page for CSV/Excel preview and dataset creation.
 - Import wizard upload status and failure recovery hints.
 - Import wizard upload history panel with parsed/failed file records and task trace links.
@@ -121,14 +125,15 @@ Initial core tables have been modeled and migrated:
 - Cleaning workbench page for visual recipe preview, save, and execution.
 - SQL workspace page for project-scoped query execution and data view saving.
 - Chart configuration page with real Data View fields and ECharts rendering.
-- Dashboard/report source page with basic free-layout report mode.
+- Dashboard/report source page with dashboard, free-layout report, and data-screen modes.
 - Task center page with project filtering, status summary, workflow coverage, and recent task table.
 - Task center retry entry controlled by backend retry eligibility, with immediate list refresh and completion feedback.
 - Task center related-resource links for datasets, data views, charts, and dashboards, with target pages reading route query parameters for selection/highlighting.
-- Data source center external database panel for PostgreSQL/MySQL connection creation, encrypted credential rotation, metadata editing, recoverable archive/restore, saved connection listing, status display, connection error display, manual connection testing, schema discovery, preview-before-import, editable field confirmation, external table import, advanced read-only SQL import, and external import history/detail.
+- External database UI is intentionally paused for the current local-file-first scope; the previously implemented backend connector APIs remain available for future work.
 - Tailwind design tokens now include the Workshop Toolkit-inspired sky, lilac, rose, and mint palette for gradual frontend visual-system adoption.
 - Placeholder pages remain only for features not yet implemented beyond the current data intake, dataset, cleaning, SQL, chart, dashboard, and task surfaces.
 - Workspace home page now acts as a demo entry screen linking into the main implemented workflow surfaces.
+- Analysis workbench for dataset selection, global filtering, metric aggregation, dimension breakdown, descriptive statistics, correlation matrix, linear regression visualization, and CSV/Excel export.
 - Frontend API client tests.
 
 ## Implemented Docker Foundation
@@ -148,8 +153,8 @@ Initial core tables have been modeled and migrated:
 - Backend health check is reachable at `http://127.0.0.1:8000/api/health`.
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
-- Backend test suite passed locally: 59 tests.
-- Frontend test suite passed: 28 tests.
+- Backend test suite passed locally: 62 tests.
+- Frontend test suite passed: 31 tests.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
 - Demo seed has been executed successfully through Docker Compose.
@@ -179,6 +184,7 @@ Initial core tables have been modeled and migrated:
 - If frontend dependencies change while using Docker Compose, the named `frontend_node_modules` volume may need `docker compose exec frontend npm install` or a volume reset to refresh installed packages.
 - API data sources are still reserved for later milestones.
 - Scheduled sync and distributed worker execution are not implemented yet.
+- The interactive analysis service currently accepts datasets up to 250,000 rows per request and runs in the application process; larger workloads should move behind the task boundary in a later milestone.
 
 ## Updated Engineering Constraints
 
@@ -196,8 +202,8 @@ Future work must preserve these boundaries:
 
 The next implementation step should make larger imports reliable without jumping directly to a distributed platform:
 
-1. Add chunked reads and batched PostgreSQL writes for larger file and external-database imports.
-2. Move long-running imports behind the existing task boundary with progress updates and cancellation-safe failure records.
-3. Introduce a lightweight worker adapter that can later switch to Redis/Celery or RQ before scheduled sync is added.
+1. Add chunked CSV/Excel reads and batched PostgreSQL writes for larger local imports.
+2. Move long-running local imports and analysis jobs behind the existing task boundary with progress updates and cancellation-safe failure records.
+3. Add reusable saved analysis definitions and promote selected results into data views, charts, dashboards, reports, and data screens.
 
 This order keeps the main data workflow traceable while avoiding premature Celery/RQ complexity.

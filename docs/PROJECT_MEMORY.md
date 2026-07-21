@@ -1,6 +1,15 @@
 # Project Memory: Integrated Data Analysis System
 
-Last updated: 2026-07-16
+Last updated: 2026-07-21
+
+## 0. Current Scope Refinement
+
+The active implementation scope is local-file-first:
+
+- CSV and Excel are the only data-source workflows exposed in the current frontend.
+- External PostgreSQL/MySQL foundations already in the backend are retained but paused from product development and navigation.
+- Current work should prioritize cleaning/ETL, statistics, metric calculation, dimension breakdown, lightweight models, charts, dashboards, reports, data screens, and export around local formal datasets.
+- This refinement overrides earlier first-stage UI requirements for external database intake until the user explicitly reactivates that scope.
 
 ## 1. Project Positioning
 

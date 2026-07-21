@@ -7,13 +7,13 @@ A professional, usable, and extensible data analysis workspace built for individ
 The repository contains a demo-ready MVP foundation with a working end-to-end data path:
 
 ```text
-CSV / Excel / external PostgreSQL or MySQL
+CSV / Excel
   -> retained source and preview
   -> PostgreSQL-backed dataset
-  -> visual cleaning or read-only SQL
-  -> reusable data view
-  -> ECharts chart
-  -> dashboard/report
+  -> visual cleaning / ETL
+  -> statistics / metrics / dimension analysis / linear model
+  -> reusable data view and ECharts chart
+  -> dashboard / report / data screen / export
   -> task, audit, and lineage records
 ```
 
@@ -21,14 +21,16 @@ Implemented product surfaces include:
 
 - Local CSV/Excel import with durable source retention, preview recovery, editable fields, and import history.
 - Formal datasets materialized as physical PostgreSQL tables with pagination and quality profiling.
-- External PostgreSQL/MySQL read-only connections, discovery, preview, table/SQL import, history, and retry.
 - Saveable cleaning recipes executed into derived datasets.
+- Dataset analysis workbench with filters, grouped metrics, descriptive statistics, correlation, linear regression, and CSV/Excel export.
 - Project-scoped read-only SQL with reusable Data View materialization.
-- ECharts chart configuration and dashboard/report layout foundations.
+- ECharts chart configuration plus dashboard, free-report, and data-screen layout modes.
 - Task Center with status, errors, related-resource links, and synchronous retry for supported operations.
 - Basic project collaboration, resource permissions, operation logs, and data lineage.
 
 Detailed status and known limitations are tracked in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
+
+The current product surface is intentionally local-file-first. Existing external PostgreSQL/MySQL backend foundations remain in the repository for future reactivation, but the Data Sources UI does not expose them in this stage.
 
 ## Technology
 

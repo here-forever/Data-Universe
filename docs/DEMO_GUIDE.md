@@ -8,7 +8,8 @@ The demo keeps the existing product route unchanged:
 
 ```text
 local CSV file -> upload preview -> formal dataset -> cleaning recipe
-  -> cleaned dataset -> SQL data view -> chart -> dashboard/report -> task trace
+  -> cleaned dataset -> analysis / SQL data view -> chart
+  -> dashboard / report / data screen / export -> task trace
 ```
 
 ## What The Demo Creates
@@ -55,6 +56,7 @@ Useful direct pages:
 http://127.0.0.1:5173/data-sources?project_id=prj_demo
 http://127.0.0.1:5173/datasets?project_id=prj_demo
 http://127.0.0.1:5173/cleaning?project_id=prj_demo
+http://127.0.0.1:5173/analytics?project_id=prj_demo
 http://127.0.0.1:5173/sql?project_id=prj_demo
 http://127.0.0.1:5173/charts?project_id=prj_demo
 http://127.0.0.1:5173/dashboards?project_id=prj_demo
@@ -83,10 +85,11 @@ This is still development auth, not production auth hardening.
 1. Open Data Sources to see file intake, upload history, and dataset bridge cards.
 2. Open Datasets to inspect the formal PostgreSQL-backed dataset and quality overview.
 3. Open Cleaning to see that the cleaned dataset is available as a derived dataset path.
-4. Open SQL Workspace to query the seeded datasets or save another SQL result as a data view.
-5. Open Charts to see ECharts rendering from `Demo Regional Revenue View`.
-6. Open Dashboards to see a saved chart-backed dashboard layout.
-7. Open Tasks to inspect the workflow trail for import, materialization, cleaning, SQL data view, chart, and dashboard actions.
+4. Open Analytics to calculate grouped metrics, inspect descriptive statistics, review correlations, fit a linear model, and export CSV/Excel results.
+5. Open SQL Workspace to query the seeded datasets or save another SQL result as a data view.
+6. Open Charts to see ECharts rendering from `Demo Regional Revenue View`.
+7. Open Dashboards to compose dashboard, free-report, or data-screen layouts.
+8. Open Tasks to inspect the workflow trail for import, materialization, cleaning, SQL data view, chart, and dashboard actions.
 
 ## Verified Demo State
 
@@ -105,5 +108,5 @@ The frontend was checked through the running Docker Compose stack at `http://127
 
 - The demo is a usable MVP foundation, not a finished enterprise platform.
 - Task execution is still synchronous inside API requests.
-- External database connections are implemented, but the demo seed focuses on first-priority local file intake.
+- External database foundations remain in the backend but are intentionally hidden from the current local-file-first product surface.
 - API data sources, scheduled sync, distributed workers, and full lineage graph UI remain later-stage items.
