@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { renderWithProviders } from "../../test/test-utils";
+import { setLanguageForTests } from "../../i18n";
 import { SqlWorkspacePage } from "./SqlWorkspacePage";
 
 const fetchMock = vi.fn();
 
 describe("SqlWorkspacePage", () => {
   beforeEach(() => {
+    setLanguageForTests("en-US");
     fetchMock.mockReset();
     global.fetch = fetchMock;
   });
@@ -48,7 +50,7 @@ describe("SqlWorkspacePage", () => {
           );
         }
 
-      if (url.endsWith("/sql/run")) {
+        if (url.endsWith("/sql/run")) {
           expect(init?.body).toContain("SELECT * FROM dataset_1 LIMIT 50");
           return Promise.resolve(
             jsonResponse({
@@ -59,30 +61,40 @@ describe("SqlWorkspacePage", () => {
               row_count: 1,
               limit: 100,
             }),
-        );
-      }
+          );
+        }
 
-      if (url.endsWith("/sql/save-data-view")) {
-        expect(init?.body).toContain('"name":"Orders View"');
-        expect(init?.body).toContain("SELECT * FROM dataset_1 LIMIT 50");
-        return Promise.resolve(
-          jsonResponse({
-            id: "view_1",
-            project_id: "prj_demo",
-            name: "Orders View",
-            description: null,
-            source_type: "sql_query",
-            source_id: null,
-            source_sql: "SELECT * FROM dataset_1 LIMIT 50",
-            physical_table_name: "dv_1",
-            row_count: 1,
-            fields: [
-              { name: "customer", inferred_type: "text", nullable: false, order: 0 },
-              { name: "amount", inferred_type: "decimal", nullable: false, order: 1 },
-            ],
-          }),
-        );
-      }
+        if (url.endsWith("/sql/save-data-view")) {
+          expect(init?.body).toContain('"name":"Orders View"');
+          expect(init?.body).toContain("SELECT * FROM dataset_1 LIMIT 50");
+          return Promise.resolve(
+            jsonResponse({
+              id: "view_1",
+              project_id: "prj_demo",
+              name: "Orders View",
+              description: null,
+              source_type: "sql_query",
+              source_id: null,
+              source_sql: "SELECT * FROM dataset_1 LIMIT 50",
+              physical_table_name: "dv_1",
+              row_count: 1,
+              fields: [
+                {
+                  name: "customer",
+                  inferred_type: "text",
+                  nullable: false,
+                  order: 0,
+                },
+                {
+                  name: "amount",
+                  inferred_type: "decimal",
+                  nullable: false,
+                  order: 1,
+                },
+              ],
+            }),
+          );
+        }
 
         return Promise.resolve(jsonResponse({}));
       },

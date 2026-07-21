@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import type { DatasetField } from "../datasets/api";
 import {
   createDataset,
@@ -36,6 +37,7 @@ const FIELD_TYPES: DatasetField["inferred_type"][] = [
 ];
 
 export function ImportWizardPage() {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
@@ -58,7 +60,9 @@ export function ImportWizardPage() {
   const previewMutation = useMutation({
     mutationFn: () => {
       if (!selectedFile) {
-        throw new Error("Select a CSV or Excel file first");
+        throw new Error(
+          t("请先选择 CSV 或 Excel 文件", "Select a CSV or Excel file first"),
+        );
       }
       return createFilePreview(projectId.trim(), selectedFile);
     },
@@ -85,7 +89,7 @@ export function ImportWizardPage() {
   const datasetMutation = useMutation({
     mutationFn: () => {
       if (!preview) {
-        throw new Error("Create a file preview first");
+        throw new Error(t("请先创建文件预览", "Create a file preview first"));
       }
       return createDataset({
         fields,
@@ -165,24 +169,30 @@ export function ImportWizardPage() {
   return (
     <section className="space-y-5">
       <div className="border-b border-line pb-5">
-        <p className="text-sm font-medium text-cyan">Import</p>
-        <h2 className="mt-1 text-2xl font-semibold text-ink">Import wizard</h2>
+        <p className="text-sm font-medium text-cyan">
+          {t("数据导入", "Import")}
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold text-ink">
+          {t("导入向导", "Import wizard")}
+        </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-          Upload CSV or Excel files, inspect inferred fields, and create
-          materialized datasets.
+          {t(
+            "上传 CSV 或 Excel 文件，检查推断字段，并创建物化数据集。",
+            "Upload CSV or Excel files, inspect inferred fields, and create materialized datasets.",
+          )}
         </p>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
         <aside className="space-y-5">
-          <Panel title="Upload source">
+          <Panel title={t("上传数据源", "Upload source")}>
             <div className="space-y-4">
               <form className="space-y-2" onSubmit={submitProject}>
                 <label
                   className="text-xs font-semibold uppercase text-muted"
                   htmlFor="import-project-id"
                 >
-                  Project ID
+                  {t("项目 ID", "Project ID")}
                 </label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
@@ -199,21 +209,21 @@ export function ImportWizardPage() {
                     disabled={projectId.trim().length === 0}
                     type="submit"
                   >
-                    Load
+                    {t("加载", "Load")}
                   </button>
                 </div>
               </form>
 
               <label className="block">
                 <span className="text-xs font-semibold uppercase text-muted">
-                  Source file
+                  {t("源文件", "Source file")}
                 </span>
                 <div className="mt-2 rounded-md border border-dashed border-line bg-slate-50 p-4">
                   <div className="flex items-start gap-3">
                     <UploadCloud className="mt-1 h-5 w-5 text-brand" />
                     <div className="min-w-0 flex-1">
                       <input
-                        aria-label="Source file"
+                        aria-label={t("源文件", "Source file")}
                         className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                         type="file"
                         accept=".csv,.xlsx,.xlsm"
@@ -246,7 +256,9 @@ export function ImportWizardPage() {
                 type="button"
               >
                 <RefreshCcw className="h-4 w-4" />
-                {previewMutation.isPending ? "Parsing..." : "Create preview"}
+                {previewMutation.isPending
+                  ? t("解析中...", "Parsing...")
+                  : t("创建预览", "Create preview")}
               </button>
 
               {previewMutation.error ? (
@@ -255,18 +267,18 @@ export function ImportWizardPage() {
             </div>
           </Panel>
 
-          <Panel title="Dataset target">
+          <Panel title={t("数据集目标", "Dataset target")}>
             <div className="space-y-4">
               <label className="block">
                 <span className="text-xs font-semibold uppercase text-muted">
-                  Dataset name
+                  {t("数据集名称", "Dataset name")}
                 </span>
                 <input
-                  aria-label="Dataset name"
+                  aria-label={t("数据集名称", "Dataset name")}
                   className="mt-2 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
                   value={datasetName}
                   onChange={(event) => setDatasetName(event.target.value)}
-                  placeholder="Sales Orders"
+                  placeholder={t("销售订单", "Sales Orders")}
                 />
               </label>
 
@@ -277,20 +289,25 @@ export function ImportWizardPage() {
                 type="button"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {datasetMutation.isPending ? "Creating..." : "Create dataset"}
+                {datasetMutation.isPending
+                  ? t("创建中...", "Creating...")
+                  : t("创建数据集", "Create dataset")}
               </button>
 
               {datasetMutation.data ? (
                 <div className="space-y-3">
                   <Alert
                     tone="success"
-                    message={`Created ${datasetMutation.data.name} (${datasetMutation.data.row_count} rows)`}
+                    message={t(
+                      `已创建 ${datasetMutation.data.name}（${datasetMutation.data.row_count} 行）`,
+                      `Created ${datasetMutation.data.name} (${datasetMutation.data.row_count} rows)`,
+                    )}
                   />
                   <Link
                     className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-emerald/30 bg-white px-4 text-sm font-semibold text-emerald transition hover:bg-emerald/10"
                     to={`/datasets?project_id=${encodeURIComponent(datasetMutation.data.project_id)}&dataset_id=${encodeURIComponent(datasetMutation.data.id)}`}
                   >
-                    Open dataset workspace
+                    {t("打开数据集工作区", "Open dataset workspace")}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -334,31 +351,38 @@ export function ImportWizardPage() {
 }
 
 function PreviewSummary({ preview }: { preview: FilePreview | null }) {
+  const { formatNumber, t } = useI18n();
   if (!preview) {
     return (
       <div className="rounded-md border border-dashed border-line bg-panel p-6 text-sm text-muted">
-        Create a preview to inspect fields and sample rows before materializing
-        a dataset.
+        {t(
+          "创建预览后可在物化数据集前检查字段和样例行。",
+          "Create a preview to inspect fields and sample rows before materializing a dataset.",
+        )}
       </div>
     );
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-4">
-      <Metric label="File" value={preview.file_name} tone="brand" />
       <Metric
-        label="Type"
+        label={t("文件", "File")}
+        value={preview.file_name}
+        tone="brand"
+      />
+      <Metric
+        label={t("类型", "Type")}
         value={preview.file_type.toUpperCase()}
         tone="cyan"
       />
       <Metric
-        label="Rows"
-        value={preview.row_count.toLocaleString()}
+        label={t("行数", "Rows")}
+        value={formatNumber(preview.row_count)}
         tone="emerald"
       />
       <Metric
-        label="Fields"
-        value={preview.fields.length.toLocaleString()}
+        label={t("字段数", "Fields")}
+        value={formatNumber(preview.fields.length)}
         tone="amber"
       />
       <div className="rounded-md border border-line bg-panel px-4 py-3 md:col-span-4">
@@ -368,11 +392,13 @@ function PreviewSummary({ preview }: { preview: FilePreview | null }) {
             {preview.upload_status}
           </span>
           <span className="font-mono">
-            upload {preview.uploaded_file_id ?? "-"}
+            {t("上传", "upload")} {preview.uploaded_file_id ?? "-"}
           </span>
           <span>
-            Original file is retained for reprocessing and dataset
-            materialization.
+            {t(
+              "原始文件已保留，可用于重新处理和数据集物化。",
+              "Original file is retained for reprocessing and dataset materialization.",
+            )}
           </span>
         </div>
       </div>
@@ -387,26 +413,27 @@ function FieldEditor({
   fields: DatasetField[];
   onChange: (index: number, patch: Partial<DatasetField>) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <Panel title="Field confirmation">
+    <Panel title={t("字段确认", "Field confirmation")}>
       {fields.length === 0 ? (
-        <StateMessage title="No fields to confirm yet" />
+        <StateMessage title={t("暂无待确认字段", "No fields to confirm yet")} />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-muted">
               <tr>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Order
+                  {t("顺序", "Order")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Field name
+                  {t("字段名称", "Field name")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Type
+                  {t("类型", "Type")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Nullable
+                  {t("可为空", "Nullable")}
                 </th>
               </tr>
             </thead>
@@ -456,7 +483,7 @@ function FieldEditor({
                           onChange(index, { nullable: event.target.checked })
                         }
                       />
-                      nullable
+                      {t("可为空", "nullable")}
                     </label>
                   </td>
                 </tr>
@@ -476,12 +503,15 @@ function SampleRows({
   preview: FilePreview | null;
   columns: Array<{ label: string; order: number; sourceName: string }>;
 }) {
+  const { t } = useI18n();
   return (
-    <Panel title="Sample rows">
+    <Panel title={t("样例数据", "Sample rows")}>
       {!preview ? (
-        <StateMessage title="No sample rows yet" />
+        <StateMessage title={t("暂无样例数据", "No sample rows yet")} />
       ) : preview.sample_rows.length === 0 ? (
-        <StateMessage title="The preview has no sample rows" />
+        <StateMessage
+          title={t("预览中没有样例数据", "The preview has no sample rows")}
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
@@ -537,6 +567,7 @@ function UploadHistoryPanel({
   onOpenPreview: (previewId: string) => void;
   onRefresh: () => void;
 }) {
+  const { formatNumber, t } = useI18n();
   const summary = useMemo(() => summarizeUploads(uploads), [uploads]);
 
   return (
@@ -547,27 +578,31 @@ function UploadHistoryPanel({
             <History className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-ink">Upload history</h3>
+            <h3 className="text-sm font-semibold text-ink">
+              {t("上传历史", "Upload history")}
+            </h3>
             <p className="mt-1 text-xs text-muted">
-              Project {projectId || "-"} keeps successful and failed file access
-              attempts traceable.
+              {t(
+                `项目 ${projectId || "-"} 会保留成功和失败的文件接入记录。`,
+                `Project ${projectId || "-"} keeps successful and failed file access attempts traceable.`,
+              )}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <HistoryMetric
-            label="Total"
-            value={summary.total.toLocaleString()}
+            label={t("总计", "Total")}
+            value={formatNumber(summary.total)}
             tone="brand"
           />
           <HistoryMetric
-            label="Parsed"
-            value={summary.parsed.toLocaleString()}
+            label={t("已解析", "Parsed")}
+            value={formatNumber(summary.parsed)}
             tone="emerald"
           />
           <HistoryMetric
-            label="Failed"
-            value={summary.failed.toLocaleString()}
+            label={t("失败", "Failed")}
+            value={formatNumber(summary.failed)}
             tone="amber"
           />
           <button
@@ -577,7 +612,7 @@ function UploadHistoryPanel({
             type="button"
           >
             <RefreshCcw className="h-3.5 w-3.5" />
-            Refresh
+            {t("刷新", "Refresh")}
           </button>
         </div>
       </div>
@@ -589,15 +624,25 @@ function UploadHistoryPanel({
 
       {isLoading ? (
         <div className="p-4">
-          <StateMessage title="Loading upload records" />
+          <StateMessage
+            title={t("正在加载上传记录", "Loading upload records")}
+          />
         </div>
       ) : error ? (
         <div className="p-4">
-          <StateMessage title="Could not load upload records" tone="error" />
+          <StateMessage
+            title={t("无法加载上传记录", "Could not load upload records")}
+            tone="error"
+          />
         </div>
       ) : uploads.length === 0 ? (
         <div className="p-4">
-          <StateMessage title="No upload records found for this project" />
+          <StateMessage
+            title={t(
+              "该项目暂无上传记录",
+              "No upload records found for this project",
+            )}
+          />
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -605,22 +650,22 @@ function UploadHistoryPanel({
             <thead className="bg-slate-50 text-xs uppercase text-muted">
               <tr>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  File
+                  {t("文件", "File")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Status
+                  {t("状态", "Status")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Size
+                  {t("大小", "Size")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Preview
+                  {t("预览", "Preview")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Uploaded
+                  {t("上传时间", "Uploaded")}
                 </th>
                 <th className="border-b border-line px-4 py-3 font-semibold">
-                  Trace
+                  {t("追踪", "Trace")}
                 </th>
               </tr>
             </thead>
@@ -650,6 +695,7 @@ function UploadHistoryRow({
   loadingPreviewId?: string;
   onOpenPreview: (previewId: string) => void;
 }) {
+  const { formatDate, formatNumber, t } = useI18n();
   const isOpeningPreview =
     upload.preview_id !== null && upload.preview_id === loadingPreviewId;
 
@@ -669,7 +715,7 @@ function UploadHistoryRow({
       <td className="border-b border-line px-4 py-3">
         <UploadStatusChip status={upload.status} />
         <p className="mt-2 text-xs uppercase text-muted">
-          {upload.file_type || "unknown"}
+          {upload.file_type || t("未知", "unknown")}
         </p>
       </td>
       <td className="border-b border-line px-4 py-3 text-muted">
@@ -680,7 +726,8 @@ function UploadHistoryRow({
           <div>
             <p className="font-mono text-xs text-ink">{upload.preview_id}</p>
             <p className="mt-1 text-xs text-muted">
-              {(upload.preview_row_count ?? 0).toLocaleString()} rows parsed
+              {formatNumber(upload.preview_row_count ?? 0)}{" "}
+              {t("行已解析", "rows parsed")}
             </p>
           </div>
         ) : (
@@ -688,8 +735,23 @@ function UploadHistoryRow({
         )}
       </td>
       <td className="border-b border-line px-4 py-3 text-xs text-muted">
-        <p>{formatDate(upload.created_at)}</p>
-        <p className="mt-1">Updated {formatDate(upload.updated_at)}</p>
+        <p>
+          {formatDate(upload.created_at, {
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            month: "short",
+          })}
+        </p>
+        <p className="mt-1">
+          {t("更新于", "Updated")}{" "}
+          {formatDate(upload.updated_at, {
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            month: "short",
+          })}
+        </p>
       </td>
       <td className="border-b border-line px-4 py-3">
         <div className="flex flex-wrap gap-2">
@@ -704,14 +766,16 @@ function UploadHistoryRow({
               }}
               type="button"
             >
-              {isOpeningPreview ? "Opening" : "Open preview"}
+              {isOpeningPreview
+                ? t("打开中", "Opening")
+                : t("打开预览", "Open preview")}
             </button>
           ) : null}
           <Link
             className="inline-flex h-8 items-center rounded-md border border-brand/20 bg-blue-50 px-3 text-xs font-semibold text-brand transition hover:bg-blue-100"
             to={`/tasks?project_id=${encodeURIComponent(upload.project_id)}`}
           >
-            Task trace
+            {t("任务追踪", "Task trace")}
           </Link>
         </div>
       </td>
@@ -738,19 +802,20 @@ function Panel({
 }
 
 function UploadStatusChip({ status }: { status: UploadStatus }) {
+  const { t } = useI18n();
   const meta = {
     failed: {
-      label: "Failed",
+      label: t("失败", "Failed"),
       icon: XCircle,
       className: "border-red-200 bg-red-50 text-red-700",
     },
     parsed: {
-      label: "Parsed",
+      label: t("已解析", "Parsed"),
       icon: CheckCircle2,
       className: "border-emerald/20 bg-emerald/10 text-emerald",
     },
     pending: {
-      label: "Pending",
+      label: t("等待中", "Pending"),
       icon: Clock3,
       className: "border-amber/20 bg-amber/10 text-amber",
     },
@@ -834,6 +899,7 @@ function Alert({
 }
 
 function ImportFailureHint({ message }: { message: string }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
       <div className="flex items-start gap-2">
@@ -841,8 +907,10 @@ function ImportFailureHint({ message }: { message: string }) {
         <div>
           <p className="font-semibold">{message}</p>
           <p className="mt-1 text-xs leading-5">
-            The system keeps upload attempts traceable. Choose a CSV/XLSX file
-            with a header row, or open Task Center to inspect retry eligibility.
+            {t(
+              "系统会保留上传尝试记录。请选择带表头的 CSV/XLSX 文件，或前往任务中心查看是否可重试。",
+              "The system keeps upload attempts traceable. Choose a CSV/XLSX file with a header row, or open Task Center to inspect retry eligibility.",
+            )}
           </p>
         </div>
       </div>
@@ -851,19 +919,24 @@ function ImportFailureHint({ message }: { message: string }) {
 }
 
 function DatasetCreateFailureHint({ message }: { message: string }) {
+  const { t } = useI18n();
   const isNameConflict = /already exists|dataset with this name/i.test(message);
   return (
     <div className="space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
       <p className="font-semibold">{message}</p>
       {isNameConflict ? (
         <p className="text-xs leading-5">
-          Use a unique dataset name for this project. Existing datasets are kept
-          immutable unless you explicitly create a new derived asset.
+          {t(
+            "请为此项目使用唯一的数据集名称。除非明确创建派生资源，否则现有数据集保持不变。",
+            "Use a unique dataset name for this project. Existing datasets are kept immutable unless you explicitly create a new derived asset.",
+          )}
         </p>
       ) : (
         <p className="text-xs leading-5">
-          The original file and preview metadata are retained, so you can adjust
-          fields or retry the materialization from Task Center when eligible.
+          {t(
+            "原始文件和预览元数据已保留，您可以调整字段，或在符合条件时从任务中心重试物化。",
+            "The original file and preview metadata are retained, so you can adjust fields or retry the materialization from Task Center when eligible.",
+          )}
         </p>
       )}
     </div>
@@ -940,13 +1013,4 @@ function formatBytes(value: number) {
     return `${(value / 1024).toFixed(1)} KB`;
   }
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-  }).format(new Date(value));
 }

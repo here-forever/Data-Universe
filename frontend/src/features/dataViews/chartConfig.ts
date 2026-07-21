@@ -29,9 +29,15 @@ export interface AggregatedPoint {
 
 export function createDefaultChartState(
   dataView: DataView | null,
+  labels: { chartSuffix: string; fallbackName: string } = {
+    chartSuffix: "Chart",
+    fallbackName: "Data view chart",
+  },
 ): ChartBuilderState {
   return {
-    name: dataView ? `${dataView.name} Chart` : "Data view chart",
+    name: dataView
+      ? `${dataView.name} ${labels.chartSuffix}`
+      : labels.fallbackName,
     chartType: "bar",
     dimension: pickDimensionField(dataView),
     metric: pickMetricField(dataView),

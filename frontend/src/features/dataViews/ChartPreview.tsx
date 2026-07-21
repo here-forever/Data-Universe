@@ -12,6 +12,7 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useMemo, useRef } from "react";
 
+import { useI18n } from "../../i18n";
 import {
   aggregateRows,
   type AggregatedPoint,
@@ -34,6 +35,7 @@ interface ChartPreviewProps {
 }
 
 export function ChartPreview({ rows, state }: ChartPreviewProps) {
+  const { t } = useI18n();
   const chartRef = useRef<HTMLDivElement | null>(null);
   const points = useMemo(() => aggregateRows(rows, state), [rows, state]);
 
@@ -43,7 +45,7 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
     }
 
     const chart = init(chartRef.current);
-    chart.setOption(createChartOption(points, state));
+    chart.setOption(createChartOption(points, state, t));
 
     const resize = () => chart.resize();
     window.addEventListener("resize", resize);
@@ -52,7 +54,7 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
       window.removeEventListener("resize", resize);
       chart.dispose();
     };
-  }, [points, state]);
+  }, [points, state, t]);
 
   if (state.chartType === "table") {
     return <ChartDataTable points={points} />;
@@ -61,14 +63,17 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
   if (points.length === 0) {
     return (
       <div className="flex h-72 items-center justify-center rounded-md border border-dashed border-line bg-white text-sm text-muted">
-        Select fields to render a chart preview.
+        {t(
+          "选择字段以渲染图表预览。",
+          "Select fields to render a chart preview.",
+        )}
       </div>
     );
   }
 
   return (
     <div
-      aria-label="Chart preview"
+      aria-label={t("图表预览", "Chart preview")}
       className="h-80 min-w-0 rounded-md border border-line bg-white"
       ref={chartRef}
     />
@@ -78,10 +83,11 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
 function createChartOption(
   points: AggregatedPoint[],
   state: ChartBuilderState,
+  t: (zh: string, en: string) => string,
 ): EChartsCoreOption {
   const labels = points.map((point) => point.label);
   const values = points.map((point) => point.value);
-  const title = `${state.aggregation.toUpperCase()}(${state.metric}) by ${state.dimension}`;
+  const title = `${state.aggregation.toUpperCase()}(${state.metric}) ${t("按", "by")} ${state.dimension}`;
 
   if (state.chartType === "pie") {
     return {
@@ -131,16 +137,17 @@ function createChartOption(
 }
 
 function ChartDataTable({ points }: { points: AggregatedPoint[] }) {
+  const { t } = useI18n();
   return (
     <div className="max-h-80 overflow-auto rounded-md border border-line bg-white">
       <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase text-muted">
           <tr>
             <th className="border-b border-line px-4 py-3 font-semibold">
-              Dimension
+              {t("维度", "Dimension")}
             </th>
             <th className="border-b border-line px-4 py-3 font-semibold">
-              Value
+              {t("数值", "Value")}
             </th>
           </tr>
         </thead>

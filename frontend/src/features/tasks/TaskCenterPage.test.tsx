@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { renderWithProviders } from "../../test/test-utils";
+import { setLanguageForTests } from "../../i18n";
 import { TaskCenterPage } from "./TaskCenterPage";
 
 const fetchMock = vi.fn();
 
 describe("TaskCenterPage", () => {
   beforeEach(() => {
+    setLanguageForTests("en-US");
     fetchMock.mockReset();
     global.fetch = fetchMock;
   });

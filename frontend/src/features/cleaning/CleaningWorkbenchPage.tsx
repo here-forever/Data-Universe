@@ -13,6 +13,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import {
   createCleaningRecipe,
   executeCleaningRecipe,
@@ -38,15 +39,16 @@ interface DraftStep {
 
 const OPERATIONS: Array<{
   operation: CleaningOperation;
-  label: string;
+  label: [string, string];
 }> = [
-  { operation: "rename_field", label: "Rename field" },
-  { operation: "fill_null", label: "Fill null" },
-  { operation: "drop_null_rows", label: "Drop null rows" },
-  { operation: "deduplicate", label: "Deduplicate" },
+  { operation: "rename_field", label: ["重命名字段", "Rename field"] },
+  { operation: "fill_null", label: ["填充空值", "Fill null"] },
+  { operation: "drop_null_rows", label: ["删除空值行", "Drop null rows"] },
+  { operation: "deduplicate", label: ["数据去重", "Deduplicate"] },
 ];
 
 export function CleaningWorkbenchPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
   const initialDatasetId = searchParams.get("dataset_id");
@@ -56,8 +58,12 @@ export function CleaningWorkbenchPage() {
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(
     initialDatasetId,
   );
-  const [recipeName, setRecipeName] = useState("Cleaning recipe");
-  const [outputName, setOutputName] = useState("Cleaned dataset");
+  const [recipeName, setRecipeName] = useState(() =>
+    t("清洗配方", "Cleaning recipe"),
+  );
+  const [outputName, setOutputName] = useState(() =>
+    t("已清洗数据集", "Cleaned dataset"),
+  );
   const [draftSteps, setDraftSteps] = useState<DraftStep[]>([]);
   const [latestPreview, setLatestPreview] = useState<CleaningPreview | null>(
     null,
@@ -89,7 +95,7 @@ export function CleaningWorkbenchPage() {
   const previewMutation = useMutation({
     mutationFn: () => {
       if (!selectedDataset) {
-        throw new Error("Select a source dataset first");
+        throw new Error(t("请先选择源数据集", "Select a source dataset first"));
       }
       return previewCleaning({
         project_id: selectedDataset.project_id,
@@ -105,7 +111,7 @@ export function CleaningWorkbenchPage() {
   const saveMutation = useMutation({
     mutationFn: () => {
       if (!selectedDataset) {
-        throw new Error("Select a source dataset first");
+        throw new Error(t("请先选择源数据集", "Select a source dataset first"));
       }
       return createCleaningRecipe({
         project_id: selectedDataset.project_id,
@@ -120,7 +126,12 @@ export function CleaningWorkbenchPage() {
   const executeMutation = useMutation({
     mutationFn: () => {
       if (!saveMutation.data) {
-        throw new Error("Save the cleaning recipe before executing it");
+        throw new Error(
+          t(
+            "执行前请先保存清洗配方",
+            "Save the cleaning recipe before executing it",
+          ),
+        );
       }
       return executeCleaningRecipe(saveMutation.data.id, {
         output_name: outputName.trim(),
@@ -193,33 +204,37 @@ export function CleaningWorkbenchPage() {
     <section className="space-y-5">
       <div className="flex flex-col gap-4 border-b border-line pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-sm font-medium text-cyan">Cleaning</p>
+          <p className="text-sm font-medium text-cyan">
+            {t("数据清洗", "Cleaning")}
+          </p>
           <h2 className="mt-1 text-2xl font-semibold text-ink">
-            Cleaning workbench
+            {t("清洗工作台", "Cleaning workbench")}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Build reusable visual cleaning recipes from formal datasets and
-            preview the result.
+            {t(
+              "基于正式数据集构建可复用的可视化清洗配方并预览结果。",
+              "Build reusable visual cleaning recipes from formal datasets and preview the result.",
+            )}
           </p>
         </div>
 
         <form className="flex w-full max-w-xl gap-2" onSubmit={submitProject}>
           <label className="sr-only" htmlFor="cleaning-project-id">
-            Project ID
+            {t("项目 ID", "Project ID")}
           </label>
           <input
             id="cleaning-project-id"
             className="h-10 flex-1 rounded-md border border-line bg-panel px-3 text-sm text-ink shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            placeholder="Project ID"
+            placeholder={t("项目 ID", "Project ID")}
           />
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             type="submit"
           >
             <RefreshCcw className="h-4 w-4" />
-            Load
+            {t("加载", "Load")}
           </button>
         </form>
       </div>
@@ -290,19 +305,23 @@ function DatasetChooser({
   error: Error | null;
   onSelect: (datasetId: string) => void;
 }) {
+  const { formatNumber, t } = useI18n();
   return (
     <aside className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<FileSliders className="h-4 w-4 text-brand" />}
-        title="Source dataset"
+        title={t("源数据集", "Source dataset")}
       />
       <div className="p-3">
         {isLoading ? (
-          <StateMessage title="Loading datasets" />
+          <StateMessage title={t("正在加载数据集", "Loading datasets")} />
         ) : error ? (
-          <StateMessage title="Could not load datasets" tone="error" />
+          <StateMessage
+            title={t("无法加载数据集", "Could not load datasets")}
+            tone="error"
+          />
         ) : datasets.length === 0 ? (
-          <StateMessage title="No datasets found" />
+          <StateMessage title={t("未找到数据集", "No datasets found")} />
         ) : (
           <div className="space-y-2">
             {datasets.map((dataset) => {
@@ -323,8 +342,13 @@ function DatasetChooser({
                     {dataset.name}
                   </p>
                   <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted">
-                    <span>{dataset.row_count.toLocaleString()} rows</span>
-                    <span>{dataset.fields.length} fields</span>
+                    <span>
+                      {formatNumber(dataset.row_count)} {t("行", "rows")}
+                    </span>
+                    <span>
+                      {formatNumber(dataset.fields.length)}{" "}
+                      {t("字段", "fields")}
+                    </span>
                   </div>
                 </button>
               );
@@ -385,21 +409,22 @@ function RecipeBuilder({
   savedRecipeName?: string;
   execution?: CleaningExecution;
 }) {
+  const { t } = useI18n();
   const fieldNames = dataset?.fields.map((field) => field.name) ?? [];
 
   return (
     <div className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<ListFilter className="h-4 w-4 text-brand" />}
-        title="Recipe builder"
+        title={t("配方构建器", "Recipe builder")}
       />
       <div className="space-y-4 p-4">
         <label className="block">
           <span className="text-xs font-semibold uppercase text-muted">
-            Recipe name
+            {t("配方名称", "Recipe name")}
           </span>
           <input
-            aria-label="Recipe name"
+            aria-label={t("配方名称", "Recipe name")}
             className="mt-2 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
             value={recipeName}
             onChange={(event) => onRecipeNameChange(event.target.value)}
@@ -408,10 +433,10 @@ function RecipeBuilder({
 
         <label className="block">
           <span className="text-xs font-semibold uppercase text-muted">
-            Output dataset
+            {t("输出数据集", "Output dataset")}
           </span>
           <input
-            aria-label="Output dataset"
+            aria-label={t("输出数据集", "Output dataset")}
             className="mt-2 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
             value={outputName}
             onChange={(event) => onOutputNameChange(event.target.value)}
@@ -428,13 +453,15 @@ function RecipeBuilder({
               type="button"
             >
               <Plus className="h-4 w-4" />
-              {item.label}
+              {t(item.label[0], item.label[1])}
             </button>
           ))}
         </div>
 
         {steps.length === 0 ? (
-          <StateMessage title="Add a cleaning step to start" />
+          <StateMessage
+            title={t("添加清洗步骤以开始", "Add a cleaning step to start")}
+          />
         ) : (
           <div className="space-y-3">
             {steps.map((step, index) => (
@@ -458,7 +485,9 @@ function RecipeBuilder({
             type="button"
           >
             <Eye className="h-4 w-4" />
-            {isPreviewing ? "Previewing..." : "Preview"}
+            {isPreviewing
+              ? t("预览中...", "Previewing...")
+              : t("预览", "Preview")}
           </button>
           <button
             className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md bg-emerald px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-45"
@@ -467,7 +496,9 @@ function RecipeBuilder({
             type="button"
           >
             <Save className="h-4 w-4" />
-            {isSaving ? "Saving..." : "Save recipe"}
+            {isSaving
+              ? t("保存中...", "Saving...")
+              : t("保存配方", "Save recipe")}
           </button>
         </div>
 
@@ -478,7 +509,9 @@ function RecipeBuilder({
           type="button"
         >
           <Play className="h-4 w-4" />
-          {isExecuting ? "Executing..." : "Execute to dataset"}
+          {isExecuting
+            ? t("执行中...", "Executing...")
+            : t("生成数据集", "Execute to dataset")}
         </button>
 
         {previewError ? (
@@ -489,19 +522,25 @@ function RecipeBuilder({
           <Alert tone="error" message={executeError.message} />
         ) : null}
         {savedRecipeName ? (
-          <Alert tone="success" message={`Saved ${savedRecipeName}`} />
+          <Alert
+            tone="success"
+            message={t(`已保存 ${savedRecipeName}`, `Saved ${savedRecipeName}`)}
+          />
         ) : null}
         {execution ? (
           <div className="space-y-3">
             <Alert
               tone="success"
-              message={`Materialized ${execution.derived_dataset_name} (${execution.row_count} rows)`}
+              message={t(
+                `已物化 ${execution.derived_dataset_name}（${execution.row_count} 行）`,
+                `Materialized ${execution.derived_dataset_name} (${execution.row_count} rows)`,
+              )}
             />
             <Link
               className="inline-flex h-10 w-full items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
               to={`/datasets?project_id=${encodeURIComponent(dataset?.project_id ?? "")}&dataset_id=${encodeURIComponent(execution.derived_dataset_id)}`}
             >
-              Open derived dataset
+              {t("打开派生数据集", "Open derived dataset")}
             </Link>
           </div>
         ) : null}
@@ -523,19 +562,23 @@ function StepEditor({
   onChange: (patch: Partial<DraftStep>) => void;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-md border border-line bg-slate-50 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ink">
-            Step {index + 1}: {operationLabel(step.operation)}
+            {t("步骤", "Step")} {index + 1}: {operationLabel(step.operation, t)}
           </p>
-          <p className="mt-1 text-xs text-muted">Order {index}</p>
+          <p className="mt-1 text-xs text-muted">
+            {t("顺序", "Order")} {index}
+          </p>
         </div>
         <button
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-muted transition hover:border-red-300 hover:text-red-600"
           onClick={onRemove}
-          title="Remove step"
+          title={t("删除步骤", "Remove step")}
+          aria-label={t("删除步骤", "Remove step")}
           type="button"
         >
           <Trash2 className="h-4 w-4" />
@@ -546,14 +589,14 @@ function StepEditor({
         {step.operation === "rename_field" ? (
           <>
             <FieldSelect
-              label="Source field"
+              label={t("源字段", "Source field")}
               value={step.sourceField}
               fields={fieldNames}
               onChange={(sourceField) => onChange({ sourceField })}
             />
             <label className="block">
               <span className="text-xs font-semibold uppercase text-muted">
-                Target field
+                {t("目标字段", "Target field")}
               </span>
               <input
                 className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
@@ -569,17 +612,17 @@ function StepEditor({
         {step.operation === "fill_null" ? (
           <>
             <FieldSelect
-              label="Field"
+              label={t("字段", "Field")}
               value={step.sourceField}
               fields={fieldNames}
               onChange={(sourceField) => onChange({ sourceField })}
             />
             <label className="block">
               <span className="text-xs font-semibold uppercase text-muted">
-                Fill value
+                {t("填充值", "Fill value")}
               </span>
               <input
-                aria-label="Fill value"
+                aria-label={t("填充值", "Fill value")}
                 className="mt-2 h-9 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
                 value={step.value}
                 onChange={(event) => onChange({ value: event.target.value })}
@@ -592,7 +635,7 @@ function StepEditor({
         step.operation === "deduplicate" ? (
           <fieldset className="md:col-span-2">
             <legend className="text-xs font-semibold uppercase text-muted">
-              Fields
+              {t("字段", "Fields")}
             </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {fieldNames.map((field) => {
@@ -671,6 +714,7 @@ function PreviewPanel({
   preview: CleaningPreview | null;
   isLoading: boolean;
 }) {
+  const { formatNumber, t } = useI18n();
   const fields = preview?.fields ?? [
     "_das_row_id",
     ...(dataset?.fields.map((field) => field.name) ?? []),
@@ -681,29 +725,39 @@ function PreviewPanel({
     <div className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Eraser className="h-4 w-4 text-brand" />}
-        title="Preview result"
+        title={t("预览结果", "Preview result")}
       />
       {isLoading ? (
-        <StateMessage title="Preparing preview" />
+        <StateMessage title={t("正在准备预览", "Preparing preview")} />
       ) : !dataset ? (
-        <StateMessage title="Select a dataset to preview cleaning output" />
+        <StateMessage
+          title={t(
+            "选择数据集以预览清洗结果",
+            "Select a dataset to preview cleaning output",
+          )}
+        />
       ) : !preview || rows.length === 0 ? (
-        <StateMessage title="Run preview to inspect cleaned rows" />
+        <StateMessage
+          title={t(
+            "运行预览以检查清洗后的数据",
+            "Run preview to inspect cleaned rows",
+          )}
+        />
       ) : (
         <>
           <div className="grid gap-3 border-b border-line p-4 md:grid-cols-3">
             <Metric
-              label="Rows"
-              value={preview.total_rows.toLocaleString()}
+              label={t("行数", "Rows")}
+              value={formatNumber(preview.total_rows)}
               tone="brand"
             />
             <Metric
-              label="Fields"
-              value={fields.length.toLocaleString()}
+              label={t("字段数", "Fields")}
+              value={formatNumber(fields.length)}
               tone="cyan"
             />
             <Metric
-              label="Source"
+              label={t("源数据", "Source")}
               value={compactId(preview.source_dataset_id)}
               tone="emerald"
             />
@@ -843,10 +897,12 @@ function toStepConfig(step: DraftStep): Record<string, unknown> {
   return { fields: step.fields };
 }
 
-function operationLabel(operation: CleaningOperation) {
-  return (
-    OPERATIONS.find((item) => item.operation === operation)?.label ?? operation
-  );
+function operationLabel(
+  operation: CleaningOperation,
+  t: (zh: string, en: string) => string,
+) {
+  const label = OPERATIONS.find((item) => item.operation === operation)?.label;
+  return label ? t(label[0], label[1]) : operation;
 }
 
 function compactId(value: string) {

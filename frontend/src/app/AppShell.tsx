@@ -3,16 +3,20 @@ import {
   ChevronLeft,
   ChevronRight,
   Cloud,
+  Languages,
   Search,
   Sparkles,
 } from "lucide-react";
+import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useWorkspaceStore } from "../features/workspace/workspaceStore";
+import { localize, useI18n } from "../i18n";
 import { navigationItems } from "./navigation";
 
 export function AppShell() {
   const location = useLocation();
+  const { language, setLanguage, t } = useI18n();
   const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useWorkspaceStore((state) => state.toggleSidebar);
   const activeItem =
@@ -22,20 +26,24 @@ export function AppShell() {
         : location.pathname.startsWith(item.path),
     ) ?? navigationItems[0];
 
+  useEffect(() => {
+    document.title = t("雾流数据台", "Mistflow Data Atelier");
+  }, [t]);
+
   return (
     <div className={sidebarCollapsed ? "fluid-app is-collapsed" : "fluid-app"}>
       <AmbientBackdrop />
-      <aside className="sidebar" aria-label="主导航">
+      <aside className="sidebar" aria-label={t("主导航", "Main navigation")}>
         <NavLink
           className="brand-lockup"
           to="/"
-          aria-label="雾流数据工作台首页"
+          aria-label={t("雾流数据工作台首页", "Mistflow data workspace home")}
         >
           <span className="brand-mark">
             <Sparkles size={18} strokeWidth={1.8} />
           </span>
           <span className="brand-copy">
-            <strong>雾流</strong>
+            <strong>{t("雾流", "Mistflow")}</strong>
             <span>DATA ATELIER</span>
           </span>
         </NavLink>
@@ -44,7 +52,11 @@ export function AppShell() {
           className="sidebar-toggle"
           onClick={toggleSidebar}
           type="button"
-          aria-label={sidebarCollapsed ? "展开侧边栏" : "折叠侧边栏"}
+          aria-label={
+            sidebarCollapsed
+              ? t("展开侧边栏", "Expand sidebar")
+              : t("折叠侧边栏", "Collapse sidebar")
+          }
         >
           {sidebarCollapsed ? (
             <ChevronRight size={17} />
@@ -53,8 +65,11 @@ export function AppShell() {
           )}
         </button>
 
-        <nav className="sidebar-nav" aria-label="数据工作台导航">
-          <p className="nav-caption">数据工作台</p>
+        <nav
+          className="sidebar-nav"
+          aria-label={t("数据工作台导航", "Data workspace navigation")}
+        >
+          <p className="nav-caption">{t("数据工作台", "Data workspace")}</p>
           {navigationItems.map(({ label, path, icon: Icon }) => (
             <NavLink
               className={({ isActive }) =>
@@ -62,11 +77,11 @@ export function AppShell() {
               }
               end={path === "/"}
               key={path}
-              title={sidebarCollapsed ? label : undefined}
+              title={sidebarCollapsed ? localize(label, language) : undefined}
               to={path}
             >
               <Icon size={18} strokeWidth={1.75} />
-              <span>{label}</span>
+              <span>{localize(label, language)}</span>
             </NavLink>
           ))}
         </nav>
@@ -76,8 +91,8 @@ export function AppShell() {
             <Cloud size={17} />
           </div>
           <div className="storage-copy">
-            <span>本地对象存储</span>
-            <strong>72.8% 可用</strong>
+            <span>{t("本地对象存储", "Local object storage")}</span>
+            <strong>{t("72.8% 可用", "72.8% available")}</strong>
           </div>
         </div>
       </aside>
@@ -85,17 +100,44 @@ export function AppShell() {
       <main className="workspace">
         <header className="topbar">
           <div className="crumbs">
-            <span>云析空间</span>
+            <span>{t("云析空间", "Analytics space")}</span>
             <i />
-            <strong>{activeItem.label}</strong>
+            <strong>{localize(activeItem.label, language)}</strong>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button" aria-label="搜索" type="button">
+            <div
+              className="language-switcher"
+              role="group"
+              aria-label={t("界面语言", "Interface language")}
+            >
+              <Languages size={15} aria-hidden="true" />
+              <button
+                className={language === "zh-CN" ? "is-active" : undefined}
+                onClick={() => setLanguage("zh-CN")}
+                type="button"
+                aria-pressed={language === "zh-CN"}
+              >
+                中文
+              </button>
+              <button
+                className={language === "en-US" ? "is-active" : undefined}
+                onClick={() => setLanguage("en-US")}
+                type="button"
+                aria-pressed={language === "en-US"}
+              >
+                EN
+              </button>
+            </div>
+            <button
+              className="icon-button"
+              aria-label={t("搜索", "Search")}
+              type="button"
+            >
               <Search size={18} />
             </button>
             <button
               className="icon-button has-dot"
-              aria-label="通知"
+              aria-label={t("通知", "Notifications")}
               type="button"
             >
               <Bell size={18} />
@@ -104,7 +146,7 @@ export function AppShell() {
               <div className="avatar">林</div>
               <div>
                 <strong>林予安</strong>
-                <span>分析负责人</span>
+                <span>{t("分析负责人", "Analytics lead")}</span>
               </div>
             </div>
           </div>

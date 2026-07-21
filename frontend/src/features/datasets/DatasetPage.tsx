@@ -11,6 +11,7 @@ import {
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import {
   getDatasetPreview,
   getDatasetQuality,
@@ -23,6 +24,7 @@ const DEFAULT_PROJECT_ID = "prj_demo";
 const PAGE_SIZE = 20;
 
 export function DatasetPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
   const initialDatasetId = searchParams.get("dataset_id");
@@ -83,19 +85,23 @@ export function DatasetPage() {
     <section className="space-y-5">
       <div className="flex flex-col gap-4 border-b border-line pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-sm font-medium text-cyan">Datasets</p>
+          <p className="text-sm font-medium text-cyan">
+            {t("数据集", "Datasets")}
+          </p>
           <h2 className="mt-1 text-2xl font-semibold text-ink">
-            Dataset workspace
+            {t("数据集工作区", "Dataset workspace")}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Browse formal datasets, inspect schema, and preview materialized
-            PostgreSQL rows.
+            {t(
+              "浏览正式数据集、检查字段结构并预览 PostgreSQL 物化数据。",
+              "Browse formal datasets, inspect schema, and preview materialized PostgreSQL rows.",
+            )}
           </p>
         </div>
 
         <form className="flex w-full max-w-xl gap-2" onSubmit={submitProject}>
           <label className="sr-only" htmlFor="project-id">
-            Project ID
+            {t("项目 ID", "Project ID")}
           </label>
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -104,7 +110,7 @@ export function DatasetPage() {
               className="h-10 w-full rounded-md border border-line bg-panel pl-9 pr-3 text-sm text-ink shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
-              placeholder="Project ID"
+              placeholder={t("项目 ID", "Project ID")}
             />
           </div>
           <button
@@ -112,7 +118,7 @@ export function DatasetPage() {
             type="submit"
           >
             <RefreshCcw className="h-4 w-4" />
-            Load
+            {t("加载", "Load")}
           </button>
         </form>
       </div>
@@ -165,13 +171,21 @@ function DatasetQualityPanel({
   isLoading: boolean;
   error: Error | null;
 }) {
+  const { formatNumber, t } = useI18n();
   if (isLoading) {
-    return <StateMessage title="Loading dataset quality profile" />;
+    return (
+      <StateMessage
+        title={t("正在加载数据质量概览", "Loading dataset quality profile")}
+      />
+    );
   }
   if (error) {
     return (
       <StateMessage
-        title="Could not load dataset quality profile"
+        title={t(
+          "无法加载数据质量概览",
+          "Could not load dataset quality profile",
+        )}
         tone="error"
       />
     );
@@ -184,42 +198,47 @@ function DatasetQualityPanel({
     <div className="overflow-hidden rounded-md border border-line bg-panel shadow-panel">
       <div className="flex flex-col gap-2 border-b border-line px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-ink">Quality overview</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            {t("质量概览", "Quality overview")}
+          </h3>
           <p className="mt-1 text-xs text-muted">
-            Profiled from the materialized PostgreSQL dataset.
+            {t(
+              "基于 PostgreSQL 物化数据集生成。",
+              "Profiled from the materialized PostgreSQL dataset.",
+            )}
           </p>
         </div>
         {quality.warnings.length ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 text-xs font-semibold text-amber">
             <AlertTriangle className="h-3.5 w-3.5" />
-            {quality.warnings.length} warnings
+            {formatNumber(quality.warnings.length)} {t("项警告", "warnings")}
           </span>
         ) : (
           <span className="rounded-full border border-emerald/20 bg-emerald/10 px-2.5 py-1 text-xs font-semibold text-emerald">
-            No major warnings
+            {t("无主要警告", "No major warnings")}
           </span>
         )}
       </div>
 
       <div className="grid gap-3 p-4 md:grid-cols-4">
         <Metric
-          label="Null cells"
-          value={quality.null_cell_count.toLocaleString()}
+          label={t("空值单元格", "Null cells")}
+          value={formatNumber(quality.null_cell_count)}
           tone="amber"
         />
         <Metric
-          label="Null ratio"
+          label={t("空值比例", "Null ratio")}
           value={`${Math.round(quality.null_cell_ratio * 100)}%`}
           tone="cyan"
         />
         <Metric
-          label="Duplicate rows"
-          value={quality.duplicate_row_count.toLocaleString()}
+          label={t("重复行", "Duplicate rows")}
+          value={formatNumber(quality.duplicate_row_count)}
           tone="brand"
         />
         <Metric
-          label="Profiled fields"
-          value={quality.field_count.toLocaleString()}
+          label={t("已分析字段", "Profiled fields")}
+          value={formatNumber(quality.field_count)}
           tone="emerald"
         />
       </div>
@@ -229,19 +248,19 @@ function DatasetQualityPanel({
           <thead className="bg-slate-50 text-xs uppercase text-muted">
             <tr>
               <th className="border-b border-line px-4 py-3 font-semibold">
-                Field
+                {t("字段", "Field")}
               </th>
               <th className="border-b border-line px-4 py-3 font-semibold">
-                Nulls
+                {t("空值", "Nulls")}
               </th>
               <th className="border-b border-line px-4 py-3 font-semibold">
-                Distinct
+                {t("去重值", "Distinct")}
               </th>
               <th className="border-b border-line px-4 py-3 font-semibold">
-                Sample values
+                {t("样例值", "Sample values")}
               </th>
               <th className="border-b border-line px-4 py-3 font-semibold">
-                Warnings
+                {t("警告", "Warnings")}
               </th>
             </tr>
           </thead>
@@ -258,7 +277,7 @@ function DatasetQualityPanel({
                   {profile.null_count} ({Math.round(profile.null_ratio * 100)}%)
                 </td>
                 <td className="border-b border-line px-4 py-3 text-muted">
-                  {profile.distinct_count.toLocaleString()}
+                  {formatNumber(profile.distinct_count)}
                 </td>
                 <td className="border-b border-line px-4 py-3 text-muted">
                   {profile.sample_values.length
@@ -275,7 +294,7 @@ function DatasetQualityPanel({
                           key={warning}
                           className="rounded-full border border-amber/20 bg-amber/10 px-2 py-1 text-xs font-semibold text-amber"
                         >
-                          {formatWarning(warning)}
+                          {formatWarning(warning, t)}
                         </span>
                       ))}
                     </div>
@@ -307,12 +326,15 @@ function DatasetList({
   selectedDatasetId,
   onSelect,
 }: DatasetListProps) {
+  const { t } = useI18n();
   return (
     <aside className="min-h-[520px] rounded-md border border-line bg-panel shadow-panel">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4 text-brand" />
-          <h3 className="text-sm font-semibold text-ink">Project datasets</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            {t("项目数据集", "Project datasets")}
+          </h3>
         </div>
         <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-brand">
           {datasets.length}
@@ -321,11 +343,14 @@ function DatasetList({
 
       <div className="p-3">
         {isLoading ? (
-          <StateMessage title="Loading datasets" />
+          <StateMessage title={t("正在加载数据集", "Loading datasets")} />
         ) : error ? (
-          <StateMessage title="Could not load datasets" tone="error" />
+          <StateMessage
+            title={t("无法加载数据集", "Could not load datasets")}
+            tone="error"
+          />
         ) : datasets.length === 0 ? (
-          <StateMessage title="No datasets found" />
+          <StateMessage title={t("未找到数据集", "No datasets found")} />
         ) : (
           <div className="space-y-2">
             {datasets.map((dataset) => {
@@ -373,10 +398,14 @@ function DatasetList({
 }
 
 function DatasetSummary({ dataset }: { dataset: Dataset | null }) {
+  const { formatNumber, t } = useI18n();
   if (!dataset) {
     return (
       <div className="rounded-md border border-dashed border-line bg-panel p-6 text-sm text-muted">
-        Select a dataset to inspect fields and preview rows.
+        {t(
+          "选择数据集以检查字段和预览数据。",
+          "Select a dataset to inspect fields and preview rows.",
+        )}
       </div>
     );
   }
@@ -384,22 +413,22 @@ function DatasetSummary({ dataset }: { dataset: Dataset | null }) {
   return (
     <div className="grid gap-3 md:grid-cols-4">
       <Metric
-        label="Rows"
-        value={dataset.row_count.toLocaleString()}
+        label={t("行数", "Rows")}
+        value={formatNumber(dataset.row_count)}
         tone="brand"
       />
       <Metric
-        label="Fields"
-        value={dataset.fields.length.toLocaleString()}
+        label={t("字段数", "Fields")}
+        value={formatNumber(dataset.fields.length)}
         tone="cyan"
       />
       <Metric
-        label="Source Preview"
+        label={t("源预览", "Source Preview")}
         value={compactId(dataset.source_preview_id)}
         tone="amber"
       />
       <Metric
-        label="Table"
+        label={t("数据表", "Table")}
         value={dataset.physical_table_name}
         tone="emerald"
       />
@@ -432,15 +461,21 @@ function DatasetPreviewTable({
   onPrevious,
   onNext,
 }: DatasetPreviewTableProps) {
+  const { formatNumber, t } = useI18n();
   const fields = dataset?.fields ?? [];
 
   return (
     <div className="overflow-hidden rounded-md border border-line bg-panel shadow-panel">
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-ink">Data preview</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            {t("数据预览", "Data preview")}
+          </h3>
           <p className="mt-1 text-xs text-muted">
-            Page {page} of {totalPages}, {pageSize} rows per page
+            {t(
+              `第 ${page} / ${totalPages} 页，每页 ${pageSize} 行`,
+              `Page ${page} of ${totalPages}, ${pageSize} rows per page`,
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -449,7 +484,8 @@ function DatasetPreviewTable({
             disabled={page <= 1 || isLoading}
             onClick={onPrevious}
             type="button"
-            title="Previous page"
+            title={t("上一页", "Previous page")}
+            aria-label={t("上一页", "Previous page")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -458,7 +494,8 @@ function DatasetPreviewTable({
             disabled={page >= totalPages || isLoading}
             onClick={onNext}
             type="button"
-            title="Next page"
+            title={t("下一页", "Next page")}
+            aria-label={t("下一页", "Next page")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -466,11 +503,14 @@ function DatasetPreviewTable({
       </div>
 
       {isLoading ? (
-        <StateMessage title="Loading preview rows" />
+        <StateMessage title={t("正在加载预览数据", "Loading preview rows")} />
       ) : error ? (
-        <StateMessage title="Could not load preview rows" tone="error" />
+        <StateMessage
+          title={t("无法加载预览数据", "Could not load preview rows")}
+          tone="error"
+        />
       ) : !dataset ? (
-        <StateMessage title="No dataset selected" />
+        <StateMessage title={t("未选择数据集", "No dataset selected")} />
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -478,7 +518,7 @@ function DatasetPreviewTable({
               <thead className="bg-slate-50 text-xs uppercase text-muted">
                 <tr>
                   <th className="sticky left-0 z-10 border-b border-line bg-slate-50 px-4 py-3 font-semibold">
-                    Row
+                    {t("行", "Row")}
                   </th>
                   {fields.map((field) => (
                     <th
@@ -491,7 +531,7 @@ function DatasetPreviewTable({
                         </span>
                         <span className="text-[11px] font-medium text-muted">
                           {field.inferred_type}
-                          {field.nullable ? " nullable" : ""}
+                          {field.nullable ? ` ${t("可为空", "nullable")}` : ""}
                         </span>
                       </div>
                     </th>
@@ -521,11 +561,15 @@ function DatasetPreviewTable({
             </table>
           </div>
           {rows.length === 0 ? (
-            <StateMessage title="This page has no rows" />
+            <StateMessage
+              title={t("当前页没有数据", "This page has no rows")}
+            />
           ) : (
             <div className="border-t border-line px-4 py-3 text-xs text-muted">
-              Showing rows {(page - 1) * pageSize + 1}-
-              {Math.min(page * pageSize, totalRows)} of {totalRows}
+              {t("显示第", "Showing rows")}{" "}
+              {formatNumber((page - 1) * pageSize + 1)}-
+              {formatNumber(Math.min(page * pageSize, totalRows))}{" "}
+              {t("行，共", "of")} {formatNumber(totalRows)}
             </div>
           )}
         </>
@@ -606,6 +650,12 @@ function formatPlainCell(value: string | number | boolean | null | undefined) {
   return String(value);
 }
 
-function formatWarning(value: string) {
-  return value.replace(/_/g, " ");
+function formatWarning(value: string, t: (zh: string, en: string) => string) {
+  const labels: Record<string, [string, string]> = {
+    all_null: ["全部为空", "all null"],
+    constant_value: ["单一值", "constant value"],
+    high_null_ratio: ["空值比例较高", "high null ratio"],
+  };
+  const label = labels[value];
+  return label ? t(label[0], label[1]) : value.replace(/_/g, " ");
 }

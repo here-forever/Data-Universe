@@ -12,21 +12,55 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import type { LocalizedText } from "../i18n";
+
 export interface NavigationItem {
-  label: string;
+  label: LocalizedText;
   path: string;
   icon: LucideIcon;
 }
 
 export const navigationItems: NavigationItem[] = [
-  { label: "总览", path: "/", icon: Grid2X2 },
-  { label: "数据源", path: "/data-sources", icon: Database },
-  { label: "数据导入", path: "/import", icon: FileUp },
-  { label: "数据集", path: "/datasets", icon: ListChecks },
-  { label: "数据清洗", path: "/cleaning", icon: BrushCleaning },
-  { label: "分析工作台", path: "/analytics", icon: ChartNoAxesCombined },
-  { label: "SQL 工作台", path: "/sql", icon: SquareTerminal },
-  { label: "图表分析", path: "/charts", icon: BarChart3 },
-  { label: "仪表盘", path: "/dashboards", icon: LayoutDashboard },
-  { label: "任务中心", path: "/tasks", icon: ScrollText },
+  { label: { zh: "总览", en: "Overview" }, path: "/", icon: Grid2X2 },
+  {
+    label: { zh: "数据源", en: "Data sources" },
+    path: "/data-sources",
+    icon: Database,
+  },
+  {
+    label: { zh: "数据导入", en: "Import data" },
+    path: "/import",
+    icon: FileUp,
+  },
+  {
+    label: { zh: "数据集", en: "Datasets" },
+    path: "/datasets",
+    icon: ListChecks,
+  },
+  {
+    label: { zh: "数据清洗", en: "Data cleaning" },
+    path: "/cleaning",
+    icon: BrushCleaning,
+  },
+  {
+    label: { zh: "分析工作台", en: "Analytics" },
+    path: "/analytics",
+    icon: ChartNoAxesCombined,
+  },
+  {
+    label: { zh: "SQL 工作台", en: "SQL workspace" },
+    path: "/sql",
+    icon: SquareTerminal,
+  },
+  { label: { zh: "图表分析", en: "Charts" }, path: "/charts", icon: BarChart3 },
+  {
+    label: { zh: "仪表盘", en: "Dashboards" },
+    path: "/dashboards",
+    icon: LayoutDashboard,
+  },
+  {
+    label: { zh: "任务中心", en: "Task center" },
+    path: "/tasks",
+    icon: ScrollText,
+  },
 ];

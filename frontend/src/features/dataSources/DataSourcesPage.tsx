@@ -18,6 +18,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import { listDatasets, type Dataset } from "../datasets/api";
 import {
   listUploads,
@@ -28,6 +29,7 @@ import {
 const DEFAULT_PROJECT_ID = "prj_demo";
 
 export function DataSourcesPage() {
+  const { t } = useI18n();
   const [projectId, setProjectId] = useState(DEFAULT_PROJECT_ID);
   const [submittedProjectId, setSubmittedProjectId] =
     useState(DEFAULT_PROJECT_ID);
@@ -69,24 +71,29 @@ export function DataSourcesPage() {
       <header className="local-source-header">
         <div>
           <p>LOCAL DATA INTAKE</p>
-          <h1 id="local-source-title">本地数据源</h1>
+          <h1 id="local-source-title">
+            {t("本地数据源", "Local data sources")}
+          </h1>
           <span>
-            统一接入 CSV 与 Excel，保留原始文件、解析预览和完整导入记录。
+            {t(
+              "统一接入 CSV 与 Excel，保留原始文件、解析预览和完整导入记录。",
+              "Import CSV and Excel files while retaining originals, previews, and complete import history.",
+            )}
           </span>
         </div>
         <form onSubmit={submitProject}>
           <label className="sr-only" htmlFor="data-source-project-id">
-            项目 ID
+            {t("项目 ID", "Project ID")}
           </label>
           <Search size={15} aria-hidden="true" />
           <input
             id="data-source-project-id"
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            placeholder="项目 ID"
+            placeholder={t("项目 ID", "Project ID")}
           />
           <button
-            aria-label="刷新数据源"
+            aria-label={t("刷新数据源", "Refresh data sources")}
             disabled={!projectId.trim()}
             type="submit"
           >
@@ -95,28 +102,31 @@ export function DataSourcesPage() {
         </form>
       </header>
 
-      <section className="local-source-metrics" aria-label="数据源摘要">
+      <section
+        className="local-source-metrics"
+        aria-label={t("数据源摘要", "Data source summary")}
+      >
         <SourceMetric
           icon={FileArchive}
-          label="原始文件"
+          label={t("原始文件", "Original files")}
           tone="sky"
           value={uploads.length}
         />
         <SourceMetric
           icon={CheckCircle2}
-          label="解析成功"
+          label={t("解析成功", "Parsed")}
           tone="mint"
           value={parsedCount}
         />
         <SourceMetric
           icon={AlertTriangle}
-          label="失败记录"
+          label={t("失败记录", "Failed")}
           tone="rose"
           value={failedCount}
         />
         <SourceMetric
           icon={Database}
-          label="正式数据集"
+          label={t("正式数据集", "Datasets")}
           tone="lilac"
           value={datasets.length}
         />
@@ -127,23 +137,25 @@ export function DataSourcesPage() {
           <div className="source-rail-heading">
             <HardDrive size={18} />
             <div>
-              <strong>文件接入</strong>
-              <span>当前阶段唯一数据源</span>
+              <strong>{t("文件接入", "File intake")}</strong>
+              <span>{t("当前阶段唯一数据源", "Current local source")}</span>
             </div>
           </div>
           <div className="file-format-list">
             <div>
               <span className="format-icon csv">CSV</span>
               <div>
-                <strong>CSV 文件</strong>
-                <small>UTF-8 / 常用分隔符</small>
+                <strong>{t("CSV 文件", "CSV file")}</strong>
+                <small>
+                  {t("UTF-8 / 常用分隔符", "UTF-8 / common delimiters")}
+                </small>
               </div>
               <CheckCircle2 size={15} />
             </div>
             <div>
               <span className="format-icon xls">XLS</span>
               <div>
-                <strong>Excel 工作簿</strong>
+                <strong>{t("Excel 工作簿", "Excel workbook")}</strong>
                 <small>.xlsx / .xls</small>
               </div>
               <CheckCircle2 size={15} />
@@ -152,16 +164,24 @@ export function DataSourcesPage() {
           <div className="source-policy">
             <ShieldCheck size={17} />
             <div>
-              <strong>可追溯导入</strong>
-              <span>原文件不会被正式数据集覆盖，失败解析也会保留记录。</span>
+              <strong>{t("可追溯导入", "Traceable imports")}</strong>
+              <span>
+                {t(
+                  "原文件不会被正式数据集覆盖，失败解析也会保留记录。",
+                  "Original files are never overwritten, and failed parses remain recorded.",
+                )}
+              </span>
             </div>
           </div>
-          <div className="source-flow-mini" aria-label="本地数据流程">
-            <span>文件</span>
+          <div
+            className="source-flow-mini"
+            aria-label={t("本地数据流程", "Local data flow")}
+          >
+            <span>{t("文件", "File")}</span>
             <ArrowRight size={13} />
-            <span>预览</span>
+            <span>{t("预览", "Preview")}</span>
             <ArrowRight size={13} />
-            <span>数据集</span>
+            <span>{t("数据集", "Dataset")}</span>
           </div>
         </aside>
 
@@ -172,9 +192,12 @@ export function DataSourcesPage() {
               <i />
             </div>
             <div>
-              <h2>导入 CSV 或 Excel</h2>
+              <h2>{t("导入 CSV 或 Excel", "Import CSV or Excel")}</h2>
               <p>
-                上传后先确认字段类型与样例数据，再生成可用于清洗、分析和报表的正式数据集。
+                {t(
+                  "上传后先确认字段类型与样例数据，再生成可用于清洗、分析和报表的正式数据集。",
+                  "Confirm field types and sample data before creating a dataset for cleaning, analysis, and reporting.",
+                )}
               </p>
             </div>
             <div className="upload-zone-actions">
@@ -183,7 +206,7 @@ export function DataSourcesPage() {
                 to={`/import?project_id=${submittedProjectId}`}
               >
                 <FileUp size={16} />
-                上传文件
+                {t("上传文件", "Upload file")}
               </Link>
               {latestParsedUpload ? (
                 <Link
@@ -191,7 +214,7 @@ export function DataSourcesPage() {
                   to={`/import?project_id=${submittedProjectId}&preview_id=${latestParsedUpload.preview_id}`}
                 >
                   <FolderClock size={16} />
-                  继续最近预览
+                  {t("继续最近预览", "Continue latest preview")}
                 </Link>
               ) : null}
             </div>
@@ -199,11 +222,14 @@ export function DataSourcesPage() {
 
           {uploadsQuery.error || datasetsQuery.error ? (
             <SourceState
-              title="无法读取本地数据源"
+              title={t(
+                "无法读取本地数据源",
+                "Unable to load local data sources",
+              )}
               detail={String(
                 (uploadsQuery.error ?? datasetsQuery.error) instanceof Error
                   ? (uploadsQuery.error ?? datasetsQuery.error)?.message
-                  : "请检查后端服务。 ",
+                  : t("请检查后端服务。", "Check the backend service."),
               )}
             />
           ) : null}
@@ -235,13 +261,14 @@ function SourceMetric({
   tone: "sky" | "mint" | "rose" | "lilac";
   value: number;
 }) {
+  const { formatNumber } = useI18n();
   return (
     <article className={`source-metric tone-${tone}`}>
       <div>
         <span>{label}</span>
         <Icon size={16} />
       </div>
-      <strong>{value.toLocaleString("zh-CN")}</strong>
+      <strong>{formatNumber(value)}</strong>
     </article>
   );
 }
@@ -255,26 +282,38 @@ function UploadHistory({
   projectId: string;
   uploads: UploadRecord[];
 }) {
+  const { formatDate, formatNumber, t } = useI18n();
   return (
     <section className="source-table-section">
       <div className="source-section-heading">
         <div>
           <p>IMPORT HISTORY</p>
-          <h2>上传与解析记录</h2>
+          <h2>{t("上传与解析记录", "Upload and parse history")}</h2>
         </div>
-        <span>{uploads.length} 条记录</span>
+        <span>
+          {t(
+            `${uploads.length} 条记录`,
+            `${formatNumber(uploads.length)} records`,
+          )}
+        </span>
       </div>
       {isLoading ? (
         <SourceState
-          title="正在读取上传历史"
-          detail="正在检查原始文件与解析结果。"
+          title={t("正在读取上传历史", "Loading upload history")}
+          detail={t(
+            "正在检查原始文件与解析结果。",
+            "Checking original files and parse results.",
+          )}
           loading
         />
       ) : null}
       {!isLoading && uploads.length === 0 ? (
         <SourceState
-          title="还没有上传记录"
-          detail="从上方入口导入第一份业务数据。"
+          title={t("还没有上传记录", "No uploads yet")}
+          detail={t(
+            "从上方入口导入第一份业务数据。",
+            "Import your first business data file above.",
+          )}
         />
       ) : null}
       {uploads.length ? (
@@ -282,12 +321,12 @@ function UploadHistory({
           <table>
             <thead>
               <tr>
-                <th>文件</th>
-                <th>格式</th>
-                <th>状态</th>
-                <th>解析行数</th>
-                <th>更新时间</th>
-                <th>下一步</th>
+                <th>{t("文件", "File")}</th>
+                <th>{t("格式", "Format")}</th>
+                <th>{t("状态", "Status")}</th>
+                <th>{t("解析行数", "Parsed rows")}</th>
+                <th>{t("更新时间", "Updated")}</th>
+                <th>{t("下一步", "Next step")}</th>
               </tr>
             </thead>
             <tbody>
@@ -310,16 +349,23 @@ function UploadHistory({
                     <UploadStatusChip status={upload.status} />
                   </td>
                   <td>
-                    {upload.preview_row_count?.toLocaleString("zh-CN") ?? "-"}
+                    {upload.preview_row_count === null
+                      ? "-"
+                      : formatNumber(upload.preview_row_count)}
                   </td>
-                  <td>{formatDate(upload.updated_at)}</td>
+                  <td>
+                    {formatDate(upload.updated_at, {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
+                  </td>
                   <td>
                     {upload.preview_id ? (
                       <Link
                         className="source-row-link"
                         to={`/import?project_id=${projectId}&preview_id=${upload.preview_id}`}
                       >
-                        打开预览
+                        {t("打开预览", "Open preview")}
                         <ArrowRight size={14} />
                       </Link>
                     ) : (
@@ -327,7 +373,7 @@ function UploadHistory({
                         className="source-row-link"
                         to={`/tasks?project_id=${projectId}`}
                       >
-                        查看任务
+                        {t("查看任务", "View task")}
                         <ArrowRight size={14} />
                       </Link>
                     )}
@@ -351,29 +397,36 @@ function DatasetBridge({
   isLoading: boolean;
   projectId: string;
 }) {
+  const { formatNumber, t } = useI18n();
   return (
     <section className="source-table-section dataset-bridge-section">
       <div className="source-section-heading">
         <div>
           <p>DATASET BRIDGE</p>
-          <h2>已生成的正式数据集</h2>
+          <h2>{t("已生成的正式数据集", "Materialized datasets")}</h2>
         </div>
         <Link to={`/datasets?project_id=${projectId}`}>
-          全部数据集
+          {t("全部数据集", "All datasets")}
           <ArrowRight size={14} />
         </Link>
       </div>
       {isLoading ? (
         <SourceState
-          title="正在读取数据集"
-          detail="正在连接已物化的数据表。"
+          title={t("正在读取数据集", "Loading datasets")}
+          detail={t(
+            "正在连接已物化的数据表。",
+            "Connecting to materialized data tables.",
+          )}
           loading
         />
       ) : null}
       {!isLoading && datasets.length === 0 ? (
         <SourceState
-          title="暂无正式数据集"
-          detail="上传并确认字段后，正式数据集会出现在这里。"
+          title={t("暂无正式数据集", "No datasets yet")}
+          detail={t(
+            "上传并确认字段后，正式数据集会出现在这里。",
+            "Datasets will appear here after fields are confirmed.",
+          )}
         />
       ) : null}
       {datasets.length ? (
@@ -386,20 +439,20 @@ function DatasetBridge({
               <div>
                 <strong>{dataset.name}</strong>
                 <small>
-                  {dataset.row_count.toLocaleString("zh-CN")} 行 ·{" "}
-                  {dataset.fields.length} 字段
+                  {formatNumber(dataset.row_count)} {t("行", "rows")} ·{" "}
+                  {formatNumber(dataset.fields.length)} {t("字段", "fields")}
                 </small>
               </div>
               <div className="dataset-bridge-actions">
                 <Link
                   to={`/datasets?project_id=${projectId}&dataset_id=${dataset.id}`}
                 >
-                  查看
+                  {t("查看", "View")}
                 </Link>
                 <Link
                   to={`/analytics?project_id=${projectId}&dataset_id=${dataset.id}`}
                 >
-                  分析
+                  {t("分析", "Analyze")}
                 </Link>
               </div>
             </article>
@@ -411,10 +464,11 @@ function DatasetBridge({
 }
 
 function UploadStatusChip({ status }: { status: UploadStatus }) {
+  const { t } = useI18n();
   const labels: Record<UploadStatus, string> = {
-    failed: "解析失败",
-    parsed: "已解析",
-    pending: "待解析",
+    failed: t("解析失败", "Parse failed"),
+    parsed: t("已解析", "Parsed"),
+    pending: t("待解析", "Pending"),
   };
   return (
     <span className={`upload-status status-${status}`}>
@@ -446,13 +500,6 @@ function SourceState({
       </div>
     </div>
   );
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function formatBytes(value: number): string {

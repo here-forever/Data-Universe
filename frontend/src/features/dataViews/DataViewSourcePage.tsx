@@ -10,6 +10,7 @@ import {
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import {
   createChart,
   createDashboard,
@@ -44,6 +45,7 @@ interface DataViewSourcePageProps {
 }
 
 export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const isCharts = mode === "charts";
@@ -61,7 +63,10 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
   const [selectedChartIds, setSelectedChartIds] = useState<string[]>([]);
   const [hasManualChartSelection, setHasManualChartSelection] = useState(false);
   const [chartState, setChartState] = useState<ChartBuilderState>(() =>
-    createDefaultChartState(null),
+    createDefaultChartState(null, {
+      chartSuffix: t("图表", "Chart"),
+      fallbackName: t("数据视图图表", "Data view chart"),
+    }),
   );
   const [chartStateDataViewId, setChartStateDataViewId] = useState<
     string | null
@@ -124,13 +129,21 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
   const previewRows = previewQuery.data?.rows ?? [];
   const effectiveChartState =
     selectedDataView && chartStateDataViewId !== selectedDataView.id
-      ? createDefaultChartState(selectedDataView)
+      ? createDefaultChartState(selectedDataView, {
+          chartSuffix: t("图表", "Chart"),
+          fallbackName: t("数据视图图表", "Data view chart"),
+        })
       : chartState;
 
   const createChartMutation = useMutation({
     mutationFn: () => {
       if (!selectedDataView) {
-        throw new Error("Select a data view before creating a chart.");
+        throw new Error(
+          t(
+            "创建图表前请选择数据视图。",
+            "Select a data view before creating a chart.",
+          ),
+        );
       }
 
       return createChart({
@@ -162,7 +175,10 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
             : [charts[0]?.id].filter(Boolean);
       if (layoutChartIds.length === 0) {
         throw new Error(
-          "Create a chart before creating a dashboard or report.",
+          t(
+            "创建仪表盘或报表前请先创建图表。",
+            "Create a chart before creating a dashboard or report.",
+          ),
         );
       }
 
@@ -170,10 +186,10 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
         project_id: submittedProjectId,
         name:
           layoutMode === "dashboard"
-            ? `${submittedProjectId} Dashboard`
+            ? `${submittedProjectId} ${t("仪表盘", "Dashboard")}`
             : layoutMode === "screen"
-              ? `${submittedProjectId} Data Screen`
-              : `${submittedProjectId} Report`,
+              ? `${submittedProjectId} ${t("数据大屏", "Data Screen")}`
+              : `${submittedProjectId} ${t("报表", "Report")}`,
         layout: {
           mode: layoutMode,
           items: layoutChartIds.map((chartId, index) => ({
@@ -210,7 +226,12 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
     setSelectedDataViewId(null);
     setSelectedChartIds([]);
     setHasManualChartSelection(false);
-    setChartState(createDefaultChartState(null));
+    setChartState(
+      createDefaultChartState(null, {
+        chartSuffix: t("图表", "Chart"),
+        fallbackName: t("数据视图图表", "Data view chart"),
+      }),
+    );
     setChartStateDataViewId(null);
     createChartMutation.reset();
     createDashboardMutation.reset();
@@ -218,7 +239,12 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
 
   function selectDataView(dataView: DataView) {
     setSelectedDataViewId(dataView.id);
-    setChartState(createDefaultChartState(dataView));
+    setChartState(
+      createDefaultChartState(dataView, {
+        chartSuffix: t("图表", "Chart"),
+        fallbackName: t("数据视图图表", "Data view chart"),
+      }),
+    );
     setChartStateDataViewId(dataView.id);
     setSelectedChartIds([]);
     setHasManualChartSelection(false);
@@ -233,34 +259,38 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
       <div className="flex flex-col gap-4 border-b border-line pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-medium text-cyan">
-            {isCharts ? "Charts" : "Dashboards"}
+            {isCharts ? t("图表", "Charts") : t("仪表盘", "Dashboards")}
           </p>
           <h2 className="mt-1 text-2xl font-semibold text-ink">
-            {isCharts ? "Chart source workspace" : "Dashboard source workspace"}
+            {isCharts
+              ? t("图表数据工作区", "Chart source workspace")
+              : t("仪表盘数据工作区", "Dashboard source workspace")}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Select reusable data views as stable inputs for visual analysis and
-            report layouts.
+            {t(
+              "选择可复用的数据视图，作为可视化分析和报表布局的稳定数据输入。",
+              "Select reusable data views as stable inputs for visual analysis and report layouts.",
+            )}
           </p>
         </div>
 
         <form className="flex w-full max-w-xl gap-2" onSubmit={submitProject}>
           <label className="sr-only" htmlFor={`${mode}-project-id`}>
-            Project ID
+            {t("项目 ID", "Project ID")}
           </label>
           <input
             id={`${mode}-project-id`}
             className="h-10 flex-1 rounded-md border border-line bg-panel px-3 text-sm text-ink shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            placeholder="Project ID"
+            placeholder={t("项目 ID", "Project ID")}
           />
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             type="submit"
           >
             <RefreshCcw className="h-4 w-4" />
-            Load
+            {t("加载", "Load")}
           </button>
         </form>
       </div>
@@ -269,15 +299,22 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
         <aside className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
           <PanelHeader
             icon={<Icon className="h-4 w-4 text-brand" />}
-            title="Data views"
+            title={t("数据视图", "Data views")}
           />
           <div className="p-3">
             {dataViewsQuery.isLoading ? (
-              <StateMessage title="Loading data views" />
+              <StateMessage
+                title={t("正在加载数据视图", "Loading data views")}
+              />
             ) : dataViewsQuery.error ? (
-              <StateMessage title="Could not load data views" tone="error" />
+              <StateMessage
+                title={t("无法加载数据视图", "Could not load data views")}
+                tone="error"
+              />
             ) : dataViews.length === 0 ? (
-              <StateMessage title="No data views found" />
+              <StateMessage
+                title={t("未找到数据视图", "No data views found")}
+              />
             ) : (
               <div className="space-y-2">
                 {dataViews.map((dataView) => (
@@ -385,6 +422,7 @@ function ChartResourcePanel({
   onChartStateChange: (nextState: ChartBuilderState) => void;
   onCreate: () => void;
 }) {
+  const { t } = useI18n();
   const fields = selectedDataView?.fields ?? [];
   const numericFields = fields.filter((field) =>
     isNumericField(field.inferred_type),
@@ -401,13 +439,17 @@ function ChartResourcePanel({
     <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<BarChart3 className="h-4 w-4 text-brand" />}
-        title="Chart builder"
+        title={t("图表构建器", "Chart builder")}
       />
       <div className="grid gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <ChartPreview rows={previewRows} state={chartState} />
           <ResourceList
-            emptyTitle={isLoading ? "Loading charts" : "No charts saved yet"}
+            emptyTitle={
+              isLoading
+                ? t("正在加载图表", "Loading charts")
+                : t("暂无已保存图表", "No charts saved yet")
+            }
             error={error}
             items={charts.length > 0 ? charts : allCharts}
             renderItem={(chart) => (
@@ -423,10 +465,10 @@ function ChartResourcePanel({
         <div className="space-y-3 rounded-md border border-brand/20 bg-blue-50 p-3">
           <label className="block">
             <span className="text-xs font-semibold uppercase text-brand">
-              Chart name
+              {t("图表名称", "Chart name")}
             </span>
             <input
-              aria-label="Chart name"
+              aria-label={t("图表名称", "Chart name")}
               className="mt-2 h-10 w-full rounded-md border border-brand/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
               value={chartState.name}
               onChange={(event) =>
@@ -437,10 +479,10 @@ function ChartResourcePanel({
 
           <label className="block">
             <span className="text-xs font-semibold uppercase text-brand">
-              Chart type
+              {t("图表类型", "Chart type")}
             </span>
             <select
-              aria-label="Chart type"
+              aria-label={t("图表类型", "Chart type")}
               className="mt-2 h-10 w-full rounded-md border border-brand/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
               value={chartState.chartType}
               onChange={(event) =>
@@ -452,7 +494,17 @@ function ChartResourcePanel({
             >
               {CHART_TYPES.map((chartType) => (
                 <option key={chartType} value={chartType}>
-                  {chartType}
+                  {t(
+                    {
+                      bar: "柱状图",
+                      line: "折线图",
+                      pie: "饼图",
+                      table: "表格",
+                    }[chartType],
+                    { bar: "Bar", line: "Line", pie: "Pie", table: "Table" }[
+                      chartType
+                    ],
+                  )}
                 </option>
               ))}
             </select>
@@ -460,10 +512,10 @@ function ChartResourcePanel({
 
           <label className="block">
             <span className="text-xs font-semibold uppercase text-brand">
-              Dimension
+              {t("维度", "Dimension")}
             </span>
             <select
-              aria-label="Dimension"
+              aria-label={t("维度", "Dimension")}
               className="mt-2 h-10 w-full rounded-md border border-brand/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
               value={chartState.dimension}
               onChange={(event) =>
@@ -483,10 +535,10 @@ function ChartResourcePanel({
 
           <label className="block">
             <span className="text-xs font-semibold uppercase text-brand">
-              Metric
+              {t("指标", "Metric")}
             </span>
             <select
-              aria-label="Metric"
+              aria-label={t("指标", "Metric")}
               className="mt-2 h-10 w-full rounded-md border border-brand/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-muted"
               disabled={chartState.aggregation === "count"}
               value={chartState.metric}
@@ -507,10 +559,10 @@ function ChartResourcePanel({
 
           <label className="block">
             <span className="text-xs font-semibold uppercase text-brand">
-              Aggregation
+              {t("聚合方式", "Aggregation")}
             </span>
             <select
-              aria-label="Aggregation"
+              aria-label={t("聚合方式", "Aggregation")}
               className="mt-2 h-10 w-full rounded-md border border-brand/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
               value={chartState.aggregation}
               onChange={(event) =>
@@ -522,7 +574,10 @@ function ChartResourcePanel({
             >
               {AGGREGATIONS.map((aggregation) => (
                 <option key={aggregation} value={aggregation}>
-                  {aggregation}
+                  {t(
+                    { sum: "求和", avg: "平均值", count: "计数" }[aggregation],
+                    { sum: "Sum", avg: "Average", count: "Count" }[aggregation],
+                  )}
                 </option>
               ))}
             </select>
@@ -535,10 +590,17 @@ function ChartResourcePanel({
             type="button"
           >
             <Save className="h-4 w-4" />
-            {isCreating ? "Saving..." : "Save chart"}
+            {isCreating
+              ? t("保存中...", "Saving...")
+              : t("保存图表", "Save chart")}
           </button>
           {createdChart ? (
-            <SuccessMessage message={`Saved ${createdChart.name}`} />
+            <SuccessMessage
+              message={t(
+                `已保存 ${createdChart.name}`,
+                `Saved ${createdChart.name}`,
+              )}
+            />
           ) : null}
           {createError ? <Alert message={createError.message} /> : null}
         </div>
@@ -578,6 +640,7 @@ function DashboardResourcePanel({
   onSelectedChartIdsChange: (chartIds: string[]) => void;
   onCreate: () => void;
 }) {
+  const { t } = useI18n();
   const activeChartIds =
     selectedChartIds.length > 0
       ? selectedChartIds
@@ -597,7 +660,7 @@ function DashboardResourcePanel({
     <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Boxes className="h-4 w-4 text-brand" />}
-        title="Dashboard and report builder"
+        title={t("仪表盘与报表构建器", "Dashboard and report builder")}
       />
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
@@ -607,7 +670,11 @@ function DashboardResourcePanel({
             selectedChartIds={activeChartIds}
           />
           <ResourceList
-            emptyTitle={isLoading ? "Loading layouts" : "No layouts saved yet"}
+            emptyTitle={
+              isLoading
+                ? t("正在加载布局", "Loading layouts")
+                : t("暂无已保存布局", "No layouts saved yet")
+            }
             error={error}
             items={dashboards}
             renderItem={(dashboard) => (
@@ -623,7 +690,7 @@ function DashboardResourcePanel({
         <div className="space-y-3 rounded-md border border-amber/20 bg-amber/10 p-3">
           <label>
             <span className="text-xs font-semibold uppercase text-amber">
-              Layout mode
+              {t("布局模式", "Layout mode")}
             </span>
             <select
               className="mt-2 h-10 w-full rounded-md border border-amber/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-2 focus:ring-amber/20"
@@ -632,17 +699,19 @@ function DashboardResourcePanel({
                 onLayoutModeChange(event.target.value as LayoutMode)
               }
             >
-              <option value="dashboard">Dashboard</option>
-              <option value="report">Free report</option>
-              <option value="screen">Data screen</option>
+              <option value="dashboard">{t("仪表盘", "Dashboard")}</option>
+              <option value="report">{t("自由报表", "Free report")}</option>
+              <option value="screen">{t("数据大屏", "Data screen")}</option>
             </select>
           </label>
           <div>
-            <p className="text-xs font-semibold uppercase text-amber">Charts</p>
+            <p className="text-xs font-semibold uppercase text-amber">
+              {t("图表", "Charts")}
+            </p>
             <div className="mt-2 max-h-64 space-y-2 overflow-auto">
               {charts.length === 0 ? (
                 <div className="rounded-md border border-line bg-white px-3 py-4 text-sm text-muted">
-                  No chart resources available.
+                  {t("暂无可用图表资源。", "No chart resources available.")}
                 </div>
               ) : (
                 charts.map((chart) => (
@@ -651,7 +720,10 @@ function DashboardResourcePanel({
                     key={chart.id}
                   >
                     <input
-                      aria-label={`Select ${chart.name}`}
+                      aria-label={t(
+                        `选择 ${chart.name}`,
+                        `Select ${chart.name}`,
+                      )}
                       checked={activeChartIds.includes(chart.id)}
                       className="mt-1 h-4 w-4 rounded border-line text-amber"
                       onChange={() => toggleChart(chart.id)}
@@ -677,10 +749,17 @@ function DashboardResourcePanel({
             type="button"
           >
             <Save className="h-4 w-4" />
-            {isCreating ? "Saving..." : "Save layout"}
+            {isCreating
+              ? t("保存中...", "Saving...")
+              : t("保存布局", "Save layout")}
           </button>
           {createdDashboard ? (
-            <SuccessMessage message={`Saved ${createdDashboard.name}`} />
+            <SuccessMessage
+              message={t(
+                `已保存 ${createdDashboard.name}`,
+                `Saved ${createdDashboard.name}`,
+              )}
+            />
           ) : null}
           {createError ? <Alert message={createError.message} /> : null}
         </div>
@@ -700,8 +779,14 @@ function ResourceList<T>({
   error: Error | null;
   renderItem: (item: T) => React.ReactNode;
 }) {
+  const { t } = useI18n();
   if (error) {
-    return <StateMessage title="Could not load resources" tone="error" />;
+    return (
+      <StateMessage
+        title={t("无法加载资源", "Could not load resources")}
+        tone="error"
+      />
+    );
   }
   if (items.length === 0) {
     return <StateMessage title={emptyTitle} />;
@@ -745,6 +830,7 @@ function DataViewButton({
   isActive: boolean;
   onSelect: () => void;
 }) {
+  const { formatNumber } = useI18n();
   return (
     <button
       className={[
@@ -764,7 +850,7 @@ function DataViewButton({
           <p className="mt-1 truncate text-xs text-muted">{dataView.id}</p>
         </div>
         <span className="rounded bg-emerald/10 px-2 py-1 text-xs font-semibold text-emerald">
-          {dataView.row_count.toLocaleString()}
+          {formatNumber(dataView.row_count)}
         </span>
       </div>
       <p className="mt-3 truncate font-mono text-xs text-brand">
@@ -775,10 +861,14 @@ function DataViewButton({
 }
 
 function DataViewSummary({ dataView }: { dataView: DataView | null }) {
+  const { formatNumber, t } = useI18n();
   if (!dataView) {
     return (
       <div className="rounded-md border border-dashed border-line bg-panel p-6 text-sm text-muted">
-        Select a data view to inspect fields and preview rows.
+        {t(
+          "选择数据视图以检查字段和预览数据。",
+          "Select a data view to inspect fields and preview rows.",
+        )}
       </div>
     );
   }
@@ -786,17 +876,25 @@ function DataViewSummary({ dataView }: { dataView: DataView | null }) {
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-4">
       <Metric
-        label="Rows"
-        value={dataView.row_count.toLocaleString()}
+        label={t("行数", "Rows")}
+        value={formatNumber(dataView.row_count)}
         tone="brand"
       />
       <Metric
-        label="Fields"
-        value={dataView.fields.length.toLocaleString()}
+        label={t("字段数", "Fields")}
+        value={formatNumber(dataView.fields.length)}
         tone="cyan"
       />
-      <Metric label="Source" value={dataView.source_type} tone="emerald" />
-      <Metric label="Table" value={dataView.physical_table_name} tone="amber" />
+      <Metric
+        label={t("来源", "Source")}
+        value={dataView.source_type}
+        tone="emerald"
+      />
+      <Metric
+        label={t("数据表", "Table")}
+        value={dataView.physical_table_name}
+        tone="amber"
+      />
     </div>
   );
 }
@@ -812,6 +910,7 @@ function PreviewPanel({
   isLoading: boolean;
   error: Error | null;
 }) {
+  const { t } = useI18n();
   const fields = preview?.data_view.fields ?? [];
   const rows = preview?.rows ?? [];
 
@@ -819,20 +918,29 @@ function PreviewPanel({
     <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Table2 className="h-4 w-4 text-brand" />}
-        title="Data source preview"
+        title={t("数据源预览", "Data source preview")}
       />
       {isLoading ? (
-        <StateMessage title="Loading preview rows" />
+        <StateMessage title={t("正在加载预览数据", "Loading preview rows")} />
       ) : error ? (
-        <StateMessage title="Could not load preview rows" tone="error" />
+        <StateMessage
+          title={t("无法加载预览数据", "Could not load preview rows")}
+          tone="error"
+        />
       ) : !preview ? (
-        <StateMessage title="No data view selected" />
+        <StateMessage title={t("未选择数据视图", "No data view selected")} />
       ) : (
         <>
           <div className="border-b border-line px-4 py-3 text-sm text-muted">
             {mode === "charts"
-              ? "Next step: configure chart type, dimension, and metric from this stable data view."
-              : "Next step: arrange charts, tables, and filters from this stable data view."}
+              ? t(
+                  "下一步：基于此稳定数据视图配置图表类型、维度和指标。",
+                  "Next step: configure chart type, dimension, and metric from this stable data view.",
+                )
+              : t(
+                  "下一步：基于此稳定数据视图编排图表、表格和筛选器。",
+                  "Next step: arrange charts, tables, and filters from this stable data view.",
+                )}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">

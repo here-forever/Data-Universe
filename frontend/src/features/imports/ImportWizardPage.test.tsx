@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { renderWithProviders } from "../../test/test-utils";
+import { setLanguageForTests } from "../../i18n";
 import { ImportWizardPage } from "./ImportWizardPage";
 
 const fetchMock = vi.fn();
 
 describe("ImportWizardPage", () => {
   beforeEach(() => {
+    setLanguageForTests("en-US");
     fetchMock.mockReset();
     global.fetch = fetchMock;
   });

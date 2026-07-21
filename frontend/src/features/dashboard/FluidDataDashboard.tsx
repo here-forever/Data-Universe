@@ -25,9 +25,11 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { localize, useI18n, type LocalizedText } from "../../i18n";
+
 type ChartVariant = "line" | "area" | "donut" | "radar";
-type Period = "本周" | "本月" | "本季度";
-type Channel = "全部渠道" | "线上" | "直营";
+type Period = "week" | "month" | "quarter";
+type Channel = "all" | "online" | "direct";
 
 registerEChartsModules([
   CanvasRenderer,
@@ -38,70 +40,83 @@ registerEChartsModules([
   TooltipComponent,
 ]);
 
-const periods: Period[] = ["本周", "本月", "本季度"];
-const channels: Channel[] = ["全部渠道", "线上", "直营"];
+const periods: Array<{ value: Period; label: LocalizedText }> = [
+  { value: "week", label: { zh: "本周", en: "Week" } },
+  { value: "month", label: { zh: "本月", en: "Month" } },
+  { value: "quarter", label: { zh: "本季度", en: "Quarter" } },
+];
+const channels: Array<{ value: Channel; label: LocalizedText }> = [
+  { value: "all", label: { zh: "全部渠道", en: "All channels" } },
+  { value: "online", label: { zh: "线上", en: "Online" } },
+  { value: "direct", label: { zh: "直营", en: "Direct" } },
+];
 
 const periodScale: Record<Period, number> = {
-  本周: 0.58,
-  本月: 1,
-  本季度: 2.74,
+  week: 0.58,
+  month: 1,
+  quarter: 2.74,
 };
 const channelScale: Record<Channel, number> = {
-  全部渠道: 1,
-  线上: 0.46,
-  直营: 0.31,
+  all: 1,
+  online: 0.46,
+  direct: 0.31,
 };
 
 const tableRows = [
   {
-    name: "华东零售渠道",
-    source: "销售订单",
-    channel: "直营",
-    updated: "刚刚",
-    status: "活跃",
+    name: { zh: "华东零售渠道", en: "East China retail" },
+    source: { zh: "销售订单", en: "Sales orders" },
+    channel: "direct" as Channel,
+    updated: { zh: "刚刚", en: "Just now" },
+    status: { zh: "活跃", en: "Active" },
+    warning: false,
     value: "¥ 128,420",
   },
   {
-    name: "会员复购漏斗",
-    source: "客户画像",
-    channel: "线上",
-    updated: "12 分钟前",
-    status: "已同步",
+    name: { zh: "会员复购漏斗", en: "Member repurchase funnel" },
+    source: { zh: "客户画像", en: "Customer profiles" },
+    channel: "online" as Channel,
+    updated: { zh: "12 分钟前", en: "12 minutes ago" },
+    status: { zh: "已同步", en: "Synced" },
+    warning: false,
     value: "64.8%",
   },
   {
-    name: "华南仓储效率",
-    source: "库存流水",
-    channel: "直营",
-    updated: "34 分钟前",
-    status: "活跃",
+    name: { zh: "华南仓储效率", en: "South China warehouse efficiency" },
+    source: { zh: "库存流水", en: "Inventory movements" },
+    channel: "direct" as Channel,
+    updated: { zh: "34 分钟前", en: "34 minutes ago" },
+    status: { zh: "活跃", en: "Active" },
+    warning: false,
     value: "92.4%",
   },
   {
-    name: "内容投放归因",
-    source: "营销触点",
-    channel: "线上",
-    updated: "1 小时前",
-    status: "待校验",
+    name: { zh: "内容投放归因", en: "Content attribution" },
+    source: { zh: "营销触点", en: "Marketing touchpoints" },
+    channel: "online" as Channel,
+    updated: { zh: "1 小时前", en: "1 hour ago" },
+    status: { zh: "待校验", en: "Needs review" },
+    warning: true,
     value: "¥ 46,280",
   },
 ];
 
 export function FluidDataDashboard() {
-  const [period, setPeriod] = useState<Period>("本月");
-  const [activeChannel, setActiveChannel] = useState<Channel>("全部渠道");
+  const { language, t } = useI18n();
+  const [period, setPeriod] = useState<Period>("month");
+  const [activeChannel, setActiveChannel] = useState<Channel>("all");
   const scale = periodScale[period] * channelScale[activeChannel];
   const filteredRows = useMemo(
     () =>
       tableRows.filter(
-        (row) => activeChannel === "全部渠道" || row.channel === activeChannel,
+        (row) => activeChannel === "all" || row.channel === activeChannel,
       ),
     [activeChannel],
   );
 
   const resetFilters = () => {
-    setPeriod("本月");
-    setActiveChannel("全部渠道");
+    setPeriod("month");
+    setActiveChannel("all");
   };
 
   return (
@@ -109,82 +124,106 @@ export function FluidDataDashboard() {
       <section className="page-heading">
         <div>
           <p className="eyebrow">
-            <span /> 晨间数据脉冲 · 实时更新
+            <span /> {t("晨间数据脉冲 · 实时更新", "Morning data pulse · Live")}
           </p>
           <h1>
-            你好，林予安<span>。</span>
+            {t("你好，林予安", "Hello, Lin Yuan")}
+            <span>{t("。", ".")}</span>
           </h1>
-          <p className="page-subtitle">让重要信号，在安静的流动里浮现。</p>
+          <p className="page-subtitle">
+            {t(
+              "让重要信号，在安静的流动里浮现。",
+              "Bring important signals quietly into focus.",
+            )}
+          </p>
         </div>
         <div className="heading-actions">
-          <div className="period-picker" aria-label="时间范围">
+          <div
+            className="period-picker"
+            aria-label={t("时间范围", "Time range")}
+          >
             {periods.map((item) => (
               <button
-                className={period === item ? "is-selected" : ""}
-                key={item}
-                onClick={() => setPeriod(item)}
-                aria-pressed={period === item}
+                className={period === item.value ? "is-selected" : ""}
+                key={item.value}
+                onClick={() => setPeriod(item.value)}
+                aria-pressed={period === item.value}
                 type="button"
               >
-                {item}
+                {localize(item.label, language)}
               </button>
             ))}
           </div>
           <Link className="add-button" to="/analytics">
             <Plus size={17} />
-            新建分析
+            {t("新建分析", "New analysis")}
           </Link>
         </div>
       </section>
 
-      <section className="filter-ribbon glass-panel" aria-label="全局筛选">
+      <section
+        className="filter-ribbon glass-panel"
+        aria-label={t("全局筛选", "Global filters")}
+      >
         <div className="filter-context">
           <span className="filter-context-icon">
             <CalendarRange size={16} />
           </span>
           <div>
-            <small>当前分析视图</small>
+            <small>{t("当前分析视图", "Current analysis view")}</small>
             <strong>
-              {period} · {activeChannel}
+              {localize(
+                periods.find((item) => item.value === period)!.label,
+                language,
+              )}{" "}
+              ·{" "}
+              {localize(
+                channels.find((item) => item.value === activeChannel)!.label,
+                language,
+              )}
             </strong>
           </div>
         </div>
-        <div className="channel-filter" role="group" aria-label="渠道筛选">
+        <div
+          className="channel-filter"
+          role="group"
+          aria-label={t("渠道筛选", "Channel filter")}
+        >
           {channels.map((channel) => (
             <button
-              className={activeChannel === channel ? "is-active" : ""}
-              key={channel}
-              onClick={() => setActiveChannel(channel)}
-              aria-pressed={activeChannel === channel}
+              className={activeChannel === channel.value ? "is-active" : ""}
+              key={channel.value}
+              onClick={() => setActiveChannel(channel.value)}
+              aria-pressed={activeChannel === channel.value}
               type="button"
             >
-              {channel}
+              {localize(channel.label, language)}
             </button>
           ))}
         </div>
         <div className="filter-feedback" aria-live="polite">
           <span>
             <Radio size={14} />
-            图表与资产表已联动
+            {t("图表与资产表已联动", "Charts and asset table are linked")}
           </span>
           <button onClick={resetFilters} type="button">
             <RotateCcw size={14} />
-            重置
+            {t("重置", "Reset")}
           </button>
         </div>
       </section>
 
-      <section className="kpi-grid" aria-label="核心指标">
+      <section className="kpi-grid" aria-label={t("核心指标", "Key metrics")}>
         <MetricCard
-          label="经营总览"
+          label={t("经营总览", "Revenue overview")}
           value={256840 * scale}
-          suffix="元"
+          suffix={t("元", "CNY")}
           trend="12.8%"
           accent="blue"
           icon={Activity}
         />
         <MetricCard
-          label="活跃访客"
+          label={t("活跃访客", "Active visitors")}
           value={16492 * scale}
           suffix=""
           trend="8.4%"
@@ -192,12 +231,12 @@ export function FluidDataDashboard() {
           icon={UsersRound}
         />
         <MetricCard
-          label="转化效率"
+          label={t("转化效率", "Conversion rate")}
           value={
             (66.8 + (periodScale[period] - 1) * 2.4) *
-            (activeChannel === "全部渠道"
+            (activeChannel === "all"
               ? 1
-              : activeChannel === "线上"
+              : activeChannel === "online"
                 ? 1.06
                 : 0.94)
           }
@@ -208,10 +247,11 @@ export function FluidDataDashboard() {
           decimal
         />
         <MetricCard
-          label="数据健康度"
+          label={t("数据健康度", "Data health")}
           value={98.6}
           suffix="%"
-          trend="稳定"
+          trend={t("稳定", "Stable")}
+          stable
           accent="pearl"
           icon={ShieldCheck}
           decimal
@@ -221,16 +261,16 @@ export function FluidDataDashboard() {
       <section className="dashboard-grid">
         <Panel
           className="chart-panel line-panel"
-          title="经营趋势"
-          subtitle="收入与目标的柔性轨迹"
-          action="查看详情"
+          title={t("经营趋势", "Business trend")}
+          subtitle={t("收入与目标的柔性轨迹", "Revenue and target trajectory")}
+          action={t("查看详情", "View details")}
         >
           <FluidChart variant="line" period={period} channel={activeChannel} />
         </Panel>
         <Panel
           className="chart-panel donut-panel"
-          title="渠道构成"
-          subtitle="点击环图聚焦渠道"
+          title={t("渠道构成", "Channel mix")}
+          subtitle={t("点击环图聚焦渠道", "Select a segment to focus")}
         >
           <FluidChart
             variant="donut"
@@ -241,16 +281,16 @@ export function FluidDataDashboard() {
         </Panel>
         <Panel
           className="chart-panel radar-panel"
-          title="经营感知"
-          subtitle="六维表现雷达"
+          title={t("经营感知", "Business pulse")}
+          subtitle={t("六维表现雷达", "Six-dimension performance")}
         >
           <FluidChart variant="radar" period={period} channel={activeChannel} />
         </Panel>
         <Panel
           className="chart-panel area-panel"
-          title="数据流速"
-          subtitle="每小时写入与处理量"
-          action="查看流向"
+          title={t("数据流速", "Data throughput")}
+          subtitle={t("每小时写入与处理量", "Hourly ingestion and processing")}
+          action={t("查看流向", "View flow")}
         >
           <FluidChart variant="area" period={period} channel={activeChannel} />
         </Panel>
@@ -261,20 +301,20 @@ export function FluidDataDashboard() {
         <div className="panel-heading table-heading">
           <div>
             <p className="panel-kicker">DATA PULSE</p>
-            <h2>当前关注的数据资产</h2>
+            <h2>{t("当前关注的数据资产", "Data assets in focus")}</h2>
           </div>
           <div className="table-actions">
             <button className="soft-button" type="button">
               <ListFilter size={16} />
-              筛选
+              {t("筛选", "Filter")}
             </button>
             <button className="soft-button" type="button">
               <Download size={16} />
-              导出
+              {t("导出", "Export")}
             </button>
             <button
               className="icon-button"
-              aria-label="更多表格操作"
+              aria-label={t("更多表格操作", "More table actions")}
               type="button"
             >
               <MoreHorizontal size={18} />
@@ -285,39 +325,41 @@ export function FluidDataDashboard() {
           <table>
             <thead>
               <tr>
-                <th>分析资产</th>
-                <th>来源</th>
-                <th>最后更新</th>
-                <th>状态</th>
-                <th>核心数值</th>
-                <th aria-label="操作" />
+                <th>{t("分析资产", "Analysis asset")}</th>
+                <th>{t("来源", "Source")}</th>
+                <th>{t("最后更新", "Last updated")}</th>
+                <th>{t("状态", "Status")}</th>
+                <th>{t("核心数值", "Key value")}</th>
+                <th aria-label={t("操作", "Actions")} />
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row) => (
-                <tr key={row.name}>
+                <tr key={row.name.zh}>
                   <td>
                     <span className="asset-dot" />
-                    {row.name}
+                    {localize(row.name, language)}
                   </td>
-                  <td className="muted-cell">{row.source}</td>
-                  <td className="muted-cell">{row.updated}</td>
+                  <td className="muted-cell">
+                    {localize(row.source, language)}
+                  </td>
+                  <td className="muted-cell">
+                    {localize(row.updated, language)}
+                  </td>
                   <td>
                     <span
                       className={
-                        row.status === "待校验"
-                          ? "status-chip warning"
-                          : "status-chip"
+                        row.warning ? "status-chip warning" : "status-chip"
                       }
                     >
-                      {row.status}
+                      {localize(row.status, language)}
                     </span>
                   </td>
                   <td className="value-cell">{row.value}</td>
                   <td>
                     <button
                       className="row-more"
-                      aria-label={`${row.name} 更多操作`}
+                      aria-label={`${localize(row.name, language)} ${t("更多操作", "more actions")}`}
                       type="button"
                     >
                       <MoreHorizontal size={18} />
@@ -341,6 +383,7 @@ function MetricCard({
   accent,
   icon: Icon,
   decimal = false,
+  stable = false,
 }: {
   label: string;
   value: number;
@@ -349,11 +392,13 @@ function MetricCard({
   accent: "blue" | "teal" | "violet" | "pearl";
   icon: LucideIcon;
   decimal?: boolean;
+  stable?: boolean;
 }) {
+  const { formatNumber, t } = useI18n();
   const displayed = useCountUp(value, 1350);
   const number = decimal
     ? displayed.toFixed(1)
-    : Math.round(displayed).toLocaleString("zh-CN");
+    : formatNumber(Math.round(displayed));
   return (
     <article className={`metric-card accent-${accent}`}>
       <div className="metric-top">
@@ -367,11 +412,11 @@ function MetricCard({
         <small>{suffix}</small>
       </div>
       <div className="metric-foot">
-        <span className={trend === "稳定" ? "trend stable" : "trend"}>
+        <span className={stable ? "trend stable" : "trend"}>
           <ArrowUpRight size={14} />
           {trend}
         </span>
-        <span>较上期</span>
+        <span>{t("较上期", "vs prior period")}</span>
       </div>
     </article>
   );
@@ -411,25 +456,26 @@ function Panel({
 }
 
 function RealtimePanel({ scale }: { scale: number }) {
+  const { formatNumber, t } = useI18n();
   const throughput = useCountUp(1248 * (0.78 + scale * 0.22), 1100);
   return (
     <article className="glass-panel realtime-panel">
       <div className="panel-heading">
         <div>
           <p className="panel-kicker">REAL-TIME</p>
-          <h2>实时指标</h2>
-          <span>系统此刻的微弱心跳</span>
+          <h2>{t("实时指标", "Real-time metrics")}</h2>
+          <span>{t("系统此刻的微弱心跳", "The system pulse right now")}</span>
         </div>
         <span className="live-badge">
           <i />
-          在线
+          {t("在线", "Live")}
         </span>
       </div>
       <div className="realtime-value">
-        <span>处理吞吐</span>
+        <span>{t("处理吞吐", "Processing throughput")}</span>
         <strong>
-          {Math.round(throughput).toLocaleString("zh-CN")}
-          <em>条/秒</em>
+          {formatNumber(Math.round(throughput))}
+          <em>{t("条/秒", "rows/s")}</em>
         </strong>
         <div className="pulse-line">
           <i />
@@ -446,33 +492,33 @@ function RealtimePanel({ scale }: { scale: number }) {
         <div>
           <span>
             <i className="signal blue" />
-            任务队列
+            {t("任务队列", "Task queue")}
           </span>
           <strong>
-            14 <small>运行中</small>
+            14 <small>{t("运行中", "running")}</small>
           </strong>
         </div>
         <div>
           <span>
             <i className="signal teal" />
-            数据连接
+            {t("数据连接", "Data connections")}
           </span>
           <strong>
-            09 <small>正常</small>
+            09 <small>{t("正常", "healthy")}</small>
           </strong>
         </div>
         <div>
           <span>
             <i className="signal violet" />
-            计算资源
+            {t("计算资源", "Compute resources")}
           </span>
           <strong>
-            68 <small>% 已用</small>
+            68 <small>{t("% 已用", "% used")}</small>
           </strong>
         </div>
       </div>
       <button className="realtime-link" type="button">
-        进入任务中心 <ArrowUpRight size={16} />
+        {t("进入任务中心", "Open task center")} <ArrowUpRight size={16} />
       </button>
     </article>
   );
@@ -489,6 +535,7 @@ function FluidChart({
   channel: Channel;
   onChannelSelect?: (channel: Channel) => void;
 }) {
+  const { language, t } = useI18n();
   const chartRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -496,12 +543,12 @@ function FluidChart({
     const chart = init(chartRef.current, undefined, {
       renderer: "canvas",
     });
-    chart.setOption(createChartOption(variant, period, channel));
+    chart.setOption(createChartOption(variant, period, channel, t));
     if (variant === "donut" && onChannelSelect) {
       chart.on("click", (params) => {
-        if (params.name === "线上" || params.name === "直营")
-          onChannelSelect(params.name);
-        else onChannelSelect("全部渠道");
+        if (params.name === t("线上", "Online")) onChannelSelect("online");
+        else if (params.name === t("直营", "Direct")) onChannelSelect("direct");
+        else onChannelSelect("all");
       });
     }
     const resize = () => chart.resize();
@@ -510,18 +557,18 @@ function FluidChart({
       window.removeEventListener("resize", resize);
       chart.dispose();
     };
-  }, [channel, onChannelSelect, period, variant]);
+  }, [channel, onChannelSelect, period, t, variant]);
 
   const chartNames: Record<ChartVariant, string> = {
-    line: "经营趋势",
-    area: "数据流速",
-    donut: "渠道构成",
-    radar: "经营感知",
+    line: t("经营趋势", "Business trend"),
+    area: t("数据流速", "Data throughput"),
+    donut: t("渠道构成", "Channel mix"),
+    radar: t("经营感知", "Business pulse"),
   };
   const chartElement = (
     <div
       className={`echart echart-${variant}`}
-      aria-label={`${chartNames[variant]}数据图表`}
+      aria-label={`${chartNames[variant]} ${t("数据图表", "chart")}`}
       ref={chartRef}
     />
   );
@@ -534,7 +581,14 @@ function FluidChart({
       {chartElement}
       <div className="donut-center" aria-live="polite">
         <strong>¥ {(total / 1000).toFixed(1)}K</strong>
-        <span>{channel === "全部渠道" ? "总收入" : channel}</span>
+        <span>
+          {channel === "all"
+            ? t("总收入", "Total revenue")
+            : localize(
+                channels.find((item) => item.value === channel)!.label,
+                language,
+              )}
+        </span>
       </div>
     </div>
   );
@@ -544,6 +598,7 @@ function createChartOption(
   variant: ChartVariant,
   period: Period,
   channel: Channel,
+  t: (zh: string, en: string) => string,
 ): EChartsCoreOption {
   const commonText = {
     color: "rgba(232, 244, 255, 0.58)",
@@ -551,7 +606,7 @@ function createChartOption(
   };
   const chartScale =
     periodScale[period] *
-    (channel === "全部渠道" ? 1 : channelScale[channel] * 1.65);
+    (channel === "all" ? 1 : channelScale[channel] * 1.65);
   const axis = {
     axisLabel: { ...commonText, fontSize: 10, margin: 14 },
     axisLine: { lineStyle: { color: "rgba(184, 194, 217, 0.12)" } },
@@ -595,11 +650,19 @@ function createChartOption(
             length2: 6,
           },
           data: [
-            { value: 34, name: "线上", selected: channel === "线上" },
-            { value: 27, name: "直营", selected: channel === "直营" },
-            { value: 19, name: "分销" },
-            { value: 12, name: "社媒" },
-            { value: 8, name: "其他" },
+            {
+              value: 34,
+              name: t("线上", "Online"),
+              selected: channel === "online",
+            },
+            {
+              value: 27,
+              name: t("直营", "Direct"),
+              selected: channel === "direct",
+            },
+            { value: 19, name: t("分销", "Distribution") },
+            { value: 12, name: t("社媒", "Social") },
+            { value: 8, name: t("其他", "Other") },
           ],
         },
       ],
@@ -608,7 +671,7 @@ function createChartOption(
 
   if (variant === "radar") {
     const radarAdjustment =
-      channel === "全部渠道" ? 0 : channel === "线上" ? 4 : -3;
+      channel === "all" ? 0 : channel === "online" ? 4 : -3;
     return {
       animationDuration: 1550,
       animationEasing: "cubicOut",
@@ -616,9 +679,14 @@ function createChartOption(
         center: ["50%", "54%"],
         radius: "68%",
         splitNumber: 4,
-        indicator: ["增长", "留存", "履约", "复购", "声量", "利润"].map(
-          (name) => ({ name, max: 100 }),
-        ),
+        indicator: [
+          t("增长", "Growth"),
+          t("留存", "Retention"),
+          t("履约", "Fulfillment"),
+          t("复购", "Repurchase"),
+          t("声量", "Reach"),
+          t("利润", "Profit"),
+        ].map((name) => ({ name, max: 100 })),
         axisName: { color: "rgba(232,244,255,.68)", fontSize: 10 },
         splitLine: { lineStyle: { color: ["rgba(184,194,217,.08)"] } },
         splitArea: {
@@ -659,7 +727,16 @@ function createChartOption(
 
   const isArea = variant === "area";
   const labels = isArea
-    ? ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "现在"]
+    ? [
+        "08:00",
+        "10:00",
+        "12:00",
+        "14:00",
+        "16:00",
+        "18:00",
+        "20:00",
+        t("现在", "Now"),
+      ]
     : ["01", "05", "09", "13", "17", "21", "25", "29"];
   const baseData = isArea
     ? [38, 52, 43, 71, 62, 86, 68, 96]

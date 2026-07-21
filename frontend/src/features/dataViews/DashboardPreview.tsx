@@ -1,4 +1,5 @@
 import type { ChartDefinition } from "./api";
+import { useI18n } from "../../i18n";
 import { ChartPreview } from "./ChartPreview";
 import { chartDefinitionToState, getChartPreviewRows } from "./chartConfig";
 
@@ -13,6 +14,7 @@ export function DashboardPreview({
   mode,
   selectedChartIds,
 }: DashboardPreviewProps) {
+  const { t } = useI18n();
   const selectedCharts = charts.filter((chart) =>
     selectedChartIds.includes(chart.id),
   );
@@ -20,7 +22,10 @@ export function DashboardPreview({
   if (selectedCharts.length === 0) {
     return (
       <div className="flex min-h-72 items-center justify-center rounded-md border border-dashed border-line bg-white text-sm text-muted">
-        Select chart resources to preview a dashboard or report layout.
+        {t(
+          "选择图表资源以预览仪表盘或报表布局。",
+          "Select chart resources to preview a dashboard or report layout.",
+        )}
       </div>
     );
   }

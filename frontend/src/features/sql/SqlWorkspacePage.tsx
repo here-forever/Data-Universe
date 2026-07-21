@@ -10,6 +10,7 @@ import {
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import {
   getSqlMetadata,
   runSql,
@@ -22,13 +23,16 @@ const DEFAULT_PROJECT_ID = "prj_demo";
 const DEFAULT_LIMIT = 100;
 
 export function SqlWorkspacePage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
   const [projectId, setProjectId] = useState(initialProjectId);
   const [submittedProjectId, setSubmittedProjectId] =
     useState(initialProjectId);
   const [sql, setSql] = useState("SELECT * FROM dataset_id_here");
-  const [dataViewName, setDataViewName] = useState("SQL data view");
+  const [dataViewName, setDataViewName] = useState(() =>
+    t("SQL 数据视图", "SQL data view"),
+  );
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [latestResult, setLatestResult] = useState<SqlRunResult | null>(null);
 
@@ -82,31 +86,33 @@ export function SqlWorkspacePage() {
         <div>
           <p className="text-sm font-medium text-cyan">SQL</p>
           <h2 className="mt-1 text-2xl font-semibold text-ink">
-            SQL workspace
+            {t("SQL 工作台", "SQL workspace")}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Query project datasets with read-only SQL and prepare reusable
-            analytical results.
+            {t(
+              "使用只读 SQL 查询项目数据集并生成可复用的分析结果。",
+              "Query project datasets with read-only SQL and prepare reusable analytical results.",
+            )}
           </p>
         </div>
 
         <form className="flex w-full max-w-xl gap-2" onSubmit={submitProject}>
           <label className="sr-only" htmlFor="sql-project-id">
-            Project ID
+            {t("项目 ID", "Project ID")}
           </label>
           <input
             id="sql-project-id"
             className="h-10 flex-1 rounded-md border border-line bg-panel px-3 text-sm text-ink shadow-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100"
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            placeholder="Project ID"
+            placeholder={t("项目 ID", "Project ID")}
           />
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-brand px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             type="submit"
           >
             <RefreshCcw className="h-4 w-4" />
-            Load
+            {t("加载", "Load")}
           </button>
         </form>
       </div>
@@ -164,19 +170,23 @@ function DatasetCatalog({
   error: Error | null;
   onUseAlias: (alias: string) => void;
 }) {
+  const { formatNumber, t } = useI18n();
   return (
     <aside className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Database className="h-4 w-4 text-brand" />}
-        title="Project datasets"
+        title={t("项目数据集", "Project datasets")}
       />
       <div className="p-3">
         {isLoading ? (
-          <StateMessage title="Loading datasets" />
+          <StateMessage title={t("正在加载数据集", "Loading datasets")} />
         ) : error ? (
-          <StateMessage title="Could not load SQL metadata" tone="error" />
+          <StateMessage
+            title={t("无法加载 SQL 元数据", "Could not load SQL metadata")}
+            tone="error"
+          />
         ) : datasets.length === 0 ? (
-          <StateMessage title="No datasets found" />
+          <StateMessage title={t("未找到数据集", "No datasets found")} />
         ) : (
           <div className="space-y-3">
             {datasets.map((dataset) => (
@@ -196,7 +206,7 @@ function DatasetCatalog({
                     </p>
                   </div>
                   <span className="rounded bg-emerald/10 px-2 py-1 text-xs font-semibold text-emerald">
-                    {dataset.row_count.toLocaleString()}
+                    {formatNumber(dataset.row_count)}
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1">
@@ -249,22 +259,26 @@ function QueryEditor({
   onSave: () => void;
   isSaving: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<SquareTerminal className="h-4 w-4 text-brand" />}
-        title="Query editor"
+        title={t("查询编辑器", "Query editor")}
       />
       <div className="space-y-4 p-4">
         <div className="rounded-md border border-cyan/20 bg-cyan/10 px-3 py-3 text-sm text-cyan">
-          Use dataset IDs as table names. Example:
+          {t(
+            "使用数据集 ID 作为表名。示例：",
+            "Use dataset IDs as table names. Example:",
+          )}
           <code className="ml-2 font-mono">
             SELECT * FROM {firstDatasetAlias ?? "dataset_xxx"} LIMIT 50
           </code>
         </div>
 
         <textarea
-          aria-label="SQL query"
+          aria-label={t("SQL 查询", "SQL query")}
           className="min-h-52 w-full resize-y rounded-md border border-line bg-slate-950 px-4 py-3 font-mono text-sm leading-6 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan focus:ring-2 focus:ring-cyan/20"
           value={sql}
           onChange={(event) => onSqlChange(event.target.value)}
@@ -273,9 +287,9 @@ function QueryEditor({
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <label className="flex items-center gap-2 text-sm text-muted">
-            Result limit
+            {t("结果行数限制", "Result limit")}
             <input
-              aria-label="Result limit"
+              aria-label={t("结果行数限制", "Result limit")}
               className="h-9 w-24 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-blue-100"
               min={1}
               max={500}
@@ -292,7 +306,9 @@ function QueryEditor({
               type="button"
             >
               <Play className="h-4 w-4" />
-              {isRunning ? "Running..." : "Run query"}
+              {isRunning
+                ? t("运行中...", "Running...")
+                : t("运行查询", "Run query")}
             </button>
           </div>
         </div>
@@ -301,10 +317,10 @@ function QueryEditor({
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <label className="flex-1">
               <span className="text-xs font-semibold uppercase text-emerald">
-                Data view name
+                {t("数据视图名称", "Data view name")}
               </span>
               <input
-                aria-label="Data view name"
+                aria-label={t("数据视图名称", "Data view name")}
                 className="mt-2 h-10 w-full rounded-md border border-emerald/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                 value={dataViewName}
                 onChange={(event) => onDataViewNameChange(event.target.value)}
@@ -312,12 +328,18 @@ function QueryEditor({
             </label>
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-45 md:mt-6"
-              disabled={isSaving || sql.trim().length === 0 || dataViewName.trim().length === 0}
+              disabled={
+                isSaving ||
+                sql.trim().length === 0 ||
+                dataViewName.trim().length === 0
+              }
               onClick={onSave}
               type="button"
             >
               <Save className="h-4 w-4" />
-              {isSaving ? "Saving..." : "Save as data view"}
+              {isSaving
+                ? t("保存中...", "Saving...")
+                : t("保存为数据视图", "Save as data view")}
             </button>
           </div>
         </div>
@@ -326,8 +348,10 @@ function QueryEditor({
         {saveError ? <Alert message={saveError.message} /> : null}
         {savedDataView ? (
           <div className="rounded-md border border-emerald/20 bg-emerald/10 px-3 py-3 text-sm text-emerald">
-            Saved {savedDataView.name} ({savedDataView.row_count} rows). It is now available for
-            charts and dashboards.
+            {t(
+              `已保存 ${savedDataView.name}（${savedDataView.row_count} 行），现在可用于图表和仪表盘。`,
+              `Saved ${savedDataView.name} (${savedDataView.row_count} rows). It is now available for charts and dashboards.`,
+            )}
           </div>
         ) : null}
       </div>
@@ -342,6 +366,7 @@ function ResultPanel({
   result: SqlRunResult | null;
   isLoading: boolean;
 }) {
+  const { formatNumber, t } = useI18n();
   const columns = result?.columns ?? [];
   const rows = result?.rows ?? [];
 
@@ -349,30 +374,32 @@ function ResultPanel({
     <div className="rounded-md border border-line bg-panel shadow-panel">
       <PanelHeader
         icon={<Table2 className="h-4 w-4 text-brand" />}
-        title="Query result"
+        title={t("查询结果", "Query result")}
       />
       {isLoading ? (
-        <StateMessage title="Running query" />
+        <StateMessage title={t("正在运行查询", "Running query")} />
       ) : !result ? (
-        <StateMessage title="Run a query to inspect rows" />
+        <StateMessage
+          title={t("运行查询以查看数据", "Run a query to inspect rows")}
+        />
       ) : rows.length === 0 ? (
-        <StateMessage title="Query returned no rows" />
+        <StateMessage title={t("查询未返回数据", "Query returned no rows")} />
       ) : (
         <>
           <div className="grid gap-3 border-b border-line p-4 md:grid-cols-3">
             <Metric
-              label="Rows"
-              value={result.row_count.toLocaleString()}
+              label={t("行数", "Rows")}
+              value={formatNumber(result.row_count)}
               tone="brand"
             />
             <Metric
-              label="Columns"
-              value={columns.length.toLocaleString()}
+              label={t("列数", "Columns")}
+              value={formatNumber(columns.length)}
               tone="cyan"
             />
             <Metric
-              label="Limit"
-              value={result.limit.toLocaleString()}
+              label={t("限制", "Limit")}
+              value={formatNumber(result.limit)}
               tone="emerald"
             />
           </div>

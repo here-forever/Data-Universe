@@ -34,6 +34,7 @@ import {
 import { useMemo, useRef, useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { useI18n } from "../../i18n";
 import { listDatasets, type Dataset, type DatasetField } from "../datasets/api";
 import {
   aggregateDataset,
@@ -63,35 +64,43 @@ registerEChartsModules([
 
 const DEFAULT_PROJECT_ID = "prj_demo";
 const NUMERIC_TYPES = new Set(["integer", "decimal"]);
-const AGGREGATIONS: Array<{ label: string; value: Aggregation }> = [
-  { label: "求和", value: "sum" },
-  { label: "平均值", value: "avg" },
-  { label: "计数", value: "count" },
-  { label: "去重计数", value: "distinct_count" },
-  { label: "最小值", value: "min" },
-  { label: "最大值", value: "max" },
+const AGGREGATIONS: Array<{ label: [string, string]; value: Aggregation }> = [
+  { label: ["求和", "Sum"], value: "sum" },
+  { label: ["平均值", "Average"], value: "avg" },
+  { label: ["计数", "Count"], value: "count" },
+  { label: ["去重计数", "Distinct count"], value: "distinct_count" },
+  { label: ["最小值", "Minimum"], value: "min" },
+  { label: ["最大值", "Maximum"], value: "max" },
 ];
-const FILTER_OPERATORS: Array<{ label: string; value: FilterOperator }> = [
-  { label: "等于", value: "eq" },
-  { label: "不等于", value: "ne" },
-  { label: "包含", value: "contains" },
-  { label: "大于", value: "gt" },
-  { label: "大于等于", value: "gte" },
-  { label: "小于", value: "lt" },
-  { label: "小于等于", value: "lte" },
-  { label: "为空", value: "is_null" },
-  { label: "不为空", value: "not_null" },
+const FILTER_OPERATORS: Array<{
+  label: [string, string];
+  value: FilterOperator;
+}> = [
+  { label: ["等于", "Equals"], value: "eq" },
+  { label: ["不等于", "Does not equal"], value: "ne" },
+  { label: ["包含", "Contains"], value: "contains" },
+  { label: ["大于", "Greater than"], value: "gt" },
+  { label: ["大于等于", "Greater or equal"], value: "gte" },
+  { label: ["小于", "Less than"], value: "lt" },
+  { label: ["小于等于", "Less or equal"], value: "lte" },
+  { label: ["为空", "Is null"], value: "is_null" },
+  { label: ["不为空", "Is not null"], value: "not_null" },
 ];
 const VIEW_MODES = [
-  { label: "维度分析", value: "dimension", icon: BarChart3 },
-  { label: "统计概览", value: "statistics", icon: Sigma },
-  { label: "相关性", value: "correlation", icon: Braces },
-  { label: "回归模型", value: "regression", icon: TrendingUp },
+  {
+    label: ["维度分析", "Dimension analysis"],
+    value: "dimension",
+    icon: BarChart3,
+  },
+  { label: ["统计概览", "Statistics"], value: "statistics", icon: Sigma },
+  { label: ["相关性", "Correlation"], value: "correlation", icon: Braces },
+  { label: ["回归模型", "Regression"], value: "regression", icon: TrendingUp },
 ] as const;
 type ViewMode = (typeof VIEW_MODES)[number]["value"];
 type ChartType = "bar" | "line";
 
 export function AnalyticsWorkbenchPage() {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
   const [projectId, setProjectId] = useState(initialProjectId);
@@ -267,7 +276,9 @@ export function AnalyticsWorkbenchPage() {
     }
     const ignoresValue = ["is_null", "not_null"].includes(filterOperator);
     if (!ignoresValue && filterValue.trim().length === 0) {
-      setFeedback("请输入筛选值后再应用。 ");
+      setFeedback(
+        t("请输入筛选值后再应用。", "Enter a filter value before applying."),
+      );
       return;
     }
     setAppliedFilters([
@@ -277,7 +288,9 @@ export function AnalyticsWorkbenchPage() {
         value: ignoresValue ? null : filterValue.trim(),
       },
     ]);
-    setFeedback("筛选已应用到全部分析视图。");
+    setFeedback(
+      t("筛选已应用到全部分析视图。", "Filter applied to all analysis views."),
+    );
   }
 
   async function download(format: "csv" | "xlsx") {
@@ -286,9 +299,16 @@ export function AnalyticsWorkbenchPage() {
     setFeedback(null);
     try {
       await exportAnalysis(selectedDataset.id, analysisRequest, format);
-      setFeedback(`已生成 ${format.toUpperCase()} 分析结果。`);
+      setFeedback(
+        t(
+          `已生成 ${format.toUpperCase()} 分析结果。`,
+          `${format.toUpperCase()} analysis exported.`,
+        ),
+      );
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "导出失败");
+      setFeedback(
+        error instanceof Error ? error.message : t("导出失败", "Export failed"),
+      );
     } finally {
       setExporting(null);
     }
@@ -306,9 +326,16 @@ export function AnalyticsWorkbenchPage() {
             <span className="analysis-title-icon" aria-hidden="true">
               <Sparkles size={19} />
             </span>
-            <h1 id="analysis-title">分析工作台</h1>
+            <h1 id="analysis-title">
+              {t("分析工作台", "Analytics workspace")}
+            </h1>
           </div>
-          <p>用正式数据集完成指标计算、维度拆解、统计分析与轻量算法建模。</p>
+          <p>
+            {t(
+              "用正式数据集完成指标计算、维度拆解、统计分析与轻量算法建模。",
+              "Calculate metrics, break down dimensions, explore statistics, and build lightweight models from formal datasets.",
+            )}
+          </p>
         </div>
         <div className="analysis-header-actions">
           <button
@@ -318,7 +345,7 @@ export function AnalyticsWorkbenchPage() {
             type="button"
           >
             <Download size={16} />
-            {exporting === "csv" ? "生成中" : "CSV"}
+            {exporting === "csv" ? t("生成中", "Generating") : "CSV"}
           </button>
           <button
             className="analysis-button primary"
@@ -331,18 +358,21 @@ export function AnalyticsWorkbenchPage() {
             ) : (
               <FileSpreadsheet size={16} />
             )}
-            导出 Excel
+            {t("导出 Excel", "Export Excel")}
           </button>
         </div>
       </header>
 
-      <div className="analysis-flow" aria-label="分析流程">
+      <div
+        className="analysis-flow"
+        aria-label={t("分析流程", "Analysis flow")}
+      >
         {[
-          ["数据集", Boxes],
-          ["筛选", Filter],
-          ["计算", Calculator],
-          ["可视化", BarChart3],
-          ["导出", Download],
+          [t("数据集", "Dataset"), Boxes],
+          [t("筛选", "Filter"), Filter],
+          [t("计算", "Calculate"), Calculator],
+          [t("可视化", "Visualize"), BarChart3],
+          [t("导出", "Export"), Download],
         ].map(([label, Icon], index) => (
           <div className="analysis-flow-step" key={String(label)}>
             <span>
@@ -355,7 +385,7 @@ export function AnalyticsWorkbenchPage() {
       </div>
 
       <form className="analysis-project-bar" onSubmit={submitProject}>
-        <label htmlFor="analysis-project-id">项目</label>
+        <label htmlFor="analysis-project-id">{t("项目", "Project")}</label>
         <input
           id="analysis-project-id"
           value={projectId}
@@ -363,15 +393,18 @@ export function AnalyticsWorkbenchPage() {
         />
         <button
           className="analysis-icon-button"
-          aria-label="刷新项目数据"
+          aria-label={t("刷新项目数据", "Refresh project data")}
           type="submit"
         >
           <RefreshCcw size={16} />
         </button>
         <span>
           {selectedDataset
-            ? `${datasets.length} 个可分析数据集`
-            : "等待选择数据集"}
+            ? t(
+                `${datasets.length} 个可分析数据集`,
+                `${formatLocaleNumber(datasets.length)} datasets available`,
+              )
+            : t("等待选择数据集", "Select a dataset")}
         </span>
       </form>
 
@@ -380,7 +413,7 @@ export function AnalyticsWorkbenchPage() {
           <Check size={15} />
           <span>{feedback}</span>
           <button
-            aria-label="关闭提示"
+            aria-label={t("关闭提示", "Dismiss message")}
             onClick={() => setFeedback(null)}
             type="button"
           >
@@ -391,19 +424,22 @@ export function AnalyticsWorkbenchPage() {
 
       {primaryError ? (
         <AnalysisState
-          title="暂时无法读取分析数据"
+          title={t("暂时无法读取分析数据", "Unable to load analysis data")}
           detail={
             primaryError instanceof Error
               ? primaryError.message
-              : "请检查后端服务。"
+              : t("请检查后端服务。", "Check the backend service.")
           }
         />
       ) : null}
 
       {isLoading ? (
         <AnalysisState
-          title="正在加载数据集"
-          detail="正在读取字段结构与分析元数据。"
+          title={t("正在加载数据集", "Loading datasets")}
+          detail={t(
+            "正在读取字段结构与分析元数据。",
+            "Reading fields and analysis metadata.",
+          )}
           loading
         />
       ) : null}
@@ -411,32 +447,42 @@ export function AnalyticsWorkbenchPage() {
       {!isLoading && !primaryError && datasets.length === 0 ? (
         <div className="analysis-empty">
           <FileSpreadsheet size={30} />
-          <h2>先导入一份 CSV 或 Excel</h2>
-          <p>正式数据集创建后，才能进行指标计算、维度分析和结果导出。</p>
+          <h2>
+            {t("先导入一份 CSV 或 Excel", "Import a CSV or Excel file first")}
+          </h2>
+          <p>
+            {t(
+              "正式数据集创建后，才能进行指标计算、维度分析和结果导出。",
+              "Create a formal dataset before calculating metrics, analyzing dimensions, or exporting results.",
+            )}
+          </p>
           <Link
             className="analysis-button primary"
             to={`/import?project_id=${submittedProjectId}`}
           >
-            去导入数据
+            {t("去导入数据", "Import data")}
           </Link>
         </div>
       ) : null}
 
       {selectedDataset ? (
         <div className="analysis-layout">
-          <aside className="analysis-config" aria-label="分析配置">
+          <aside
+            className="analysis-config"
+            aria-label={t("分析配置", "Analysis configuration")}
+          >
             <div className="analysis-section-heading">
               <div>
                 <small>CONFIGURATION</small>
-                <h2>计算配置</h2>
+                <h2>{t("计算配置", "Calculation settings")}</h2>
               </div>
               <span className="analysis-ready">
                 <i />
-                已就绪
+                {t("已就绪", "Ready")}
               </span>
             </div>
 
-            <Control label="数据集" htmlFor="analysis-dataset">
+            <Control label={t("数据集", "Dataset")} htmlFor="analysis-dataset">
               <SelectShell>
                 <select
                   id="analysis-dataset"
@@ -457,13 +503,18 @@ export function AnalyticsWorkbenchPage() {
                 </select>
               </SelectShell>
               <span className="control-meta">
-                {selectedDataset.row_count.toLocaleString()} 行 ·{" "}
-                {selectedDataset.fields.length} 字段
+                {formatLocaleNumber(selectedDataset.row_count)}{" "}
+                {t("行", "rows")} ·{" "}
+                {formatLocaleNumber(selectedDataset.fields.length)}{" "}
+                {t("字段", "fields")}
               </span>
             </Control>
 
             <div className="config-divider" />
-            <Control label="主维度" htmlFor="analysis-dimension">
+            <Control
+              label={t("主维度", "Primary dimension")}
+              htmlFor="analysis-dimension"
+            >
               <SelectShell>
                 <select
                   id="analysis-dimension"
@@ -478,7 +529,10 @@ export function AnalyticsWorkbenchPage() {
                 </select>
               </SelectShell>
             </Control>
-            <Control label="次级维度" htmlFor="analysis-secondary-dimension">
+            <Control
+              label={t("次级维度", "Secondary dimension")}
+              htmlFor="analysis-secondary-dimension"
+            >
               <SelectShell>
                 <select
                   id="analysis-secondary-dimension"
@@ -487,7 +541,7 @@ export function AnalyticsWorkbenchPage() {
                     setSecondaryDimension(event.target.value)
                   }
                 >
-                  <option value="">不拆分</option>
+                  <option value="">{t("不拆分", "No split")}</option>
                   {selectedDataset.fields
                     .filter((field) => field.name !== activeDimension)
                     .map((field) => (
@@ -498,7 +552,10 @@ export function AnalyticsWorkbenchPage() {
                 </select>
               </SelectShell>
             </Control>
-            <Control label="指标字段" htmlFor="analysis-metric">
+            <Control
+              label={t("指标字段", "Metric field")}
+              htmlFor="analysis-metric"
+            >
               <SelectShell>
                 <select
                   id="analysis-metric"
@@ -516,7 +573,10 @@ export function AnalyticsWorkbenchPage() {
                 </select>
               </SelectShell>
             </Control>
-            <Control label="聚合方式" htmlFor="analysis-aggregation">
+            <Control
+              label={t("聚合方式", "Aggregation")}
+              htmlFor="analysis-aggregation"
+            >
               <SelectShell>
                 <select
                   id="analysis-aggregation"
@@ -527,7 +587,7 @@ export function AnalyticsWorkbenchPage() {
                 >
                   {AGGREGATIONS.map((item) => (
                     <option key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label[0], item.label[1])}
                     </option>
                   ))}
                 </select>
@@ -536,8 +596,12 @@ export function AnalyticsWorkbenchPage() {
 
             <div className="config-divider" />
             <div className="control-label-row">
-              <label htmlFor="analysis-filter-field">全局筛选</label>
-              {appliedFilters.length ? <span>已启用</span> : null}
+              <label htmlFor="analysis-filter-field">
+                {t("全局筛选", "Global filter")}
+              </label>
+              {appliedFilters.length ? (
+                <span>{t("已启用", "Active")}</span>
+              ) : null}
             </div>
             <SelectShell>
               <select
@@ -545,7 +609,7 @@ export function AnalyticsWorkbenchPage() {
                 value={filterField}
                 onChange={(event) => setFilterField(event.target.value)}
               >
-                <option value="">不筛选</option>
+                <option value="">{t("不筛选", "No filter")}</option>
                 {selectedDataset.fields.map((field) => (
                   <option key={field.name} value={field.name}>
                     {field.name}
@@ -556,7 +620,7 @@ export function AnalyticsWorkbenchPage() {
             <div className="analysis-filter-row">
               <SelectShell>
                 <select
-                  aria-label="筛选运算符"
+                  aria-label={t("筛选运算符", "Filter operator")}
                   value={filterOperator}
                   onChange={(event) =>
                     setFilterOperator(event.target.value as FilterOperator)
@@ -564,15 +628,15 @@ export function AnalyticsWorkbenchPage() {
                 >
                   {FILTER_OPERATORS.map((item) => (
                     <option key={item.value} value={item.value}>
-                      {item.label}
+                      {t(item.label[0], item.label[1])}
                     </option>
                   ))}
                 </select>
               </SelectShell>
               <input
-                aria-label="筛选值"
+                aria-label={t("筛选值", "Filter value")}
                 disabled={["is_null", "not_null"].includes(filterOperator)}
-                placeholder="输入值"
+                placeholder={t("输入值", "Enter value")}
                 value={filterValue}
                 onChange={(event) => setFilterValue(event.target.value)}
               />
@@ -583,14 +647,14 @@ export function AnalyticsWorkbenchPage() {
               type="button"
             >
               <Filter size={15} />
-              应用到全部视图
+              {t("应用到全部视图", "Apply to all views")}
             </button>
             {appliedFilters.map((filter) => (
               <button
                 className="active-filter"
                 key={`${filter.field}-${filter.operator}`}
                 onClick={() => setAppliedFilters([])}
-                title="清除筛选"
+                title={t("清除筛选", "Clear filter")}
                 type="button"
               >
                 <span>{filter.field}</span>
@@ -602,7 +666,10 @@ export function AnalyticsWorkbenchPage() {
           </aside>
 
           <main className="analysis-results">
-            <nav className="analysis-tabs" aria-label="分析视图">
+            <nav
+              className="analysis-tabs"
+              aria-label={t("分析视图", "Analysis views")}
+            >
               {VIEW_MODES.map(({ label, value, icon: Icon }) => (
                 <button
                   className={viewMode === value ? "is-active" : ""}
@@ -611,7 +678,7 @@ export function AnalyticsWorkbenchPage() {
                   type="button"
                 >
                   <Icon size={15} />
-                  {label}
+                  {t(label[0], label[1])}
                 </button>
               ))}
             </nav>
@@ -697,44 +764,46 @@ function MetricBand({
   metricAlias: string;
   statistics?: StatisticsResponse;
 }) {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   const values =
     aggregate?.rows
       .map((row) => Number(row[metricAlias]))
       .filter(Number.isFinite) ?? [];
   const metricTotal = values.reduce((sum, value) => sum + value, 0);
   return (
-    <section className="analysis-metric-band" aria-label="分析摘要">
+    <section
+      className="analysis-metric-band"
+      aria-label={t("分析摘要", "Analysis summary")}
+    >
       <SummaryMetric
         accent="sky"
         icon={Activity}
-        label="参与计算"
-        value={(
-          aggregate?.filtered_row_count ??
-          statistics?.filtered_row_count ??
-          0
-        ).toLocaleString()}
-        suffix="行"
+        label={t("参与计算", "Rows analyzed")}
+        value={formatLocaleNumber(
+          aggregate?.filtered_row_count ?? statistics?.filtered_row_count ?? 0,
+        )}
+        suffix={t("行", "rows")}
       />
       <SummaryMetric
         accent="mint"
         icon={Boxes}
-        label="维度分组"
-        value={(aggregate?.total_groups ?? 0).toLocaleString()}
-        suffix="组"
+        label={t("维度分组", "Dimension groups")}
+        value={formatLocaleNumber(aggregate?.total_groups ?? 0)}
+        suffix={t("组", "groups")}
       />
       <SummaryMetric
         accent="lilac"
         icon={Calculator}
-        label="指标汇总"
+        label={t("指标汇总", "Metric total")}
         value={formatNumber(metricTotal)}
         suffix=""
       />
       <SummaryMetric
         accent="rose"
         icon={Target}
-        label="数值字段"
-        value={(statistics?.numeric_fields.length ?? 0).toLocaleString()}
-        suffix="个"
+        label={t("数值字段", "Numeric fields")}
+        value={formatLocaleNumber(statistics?.numeric_fields.length ?? 0)}
+        suffix={t("个", "")}
       />
     </section>
   );
@@ -782,11 +851,15 @@ function DimensionAnalysis({
   query: ReturnType<typeof useQuery<AnalysisResponse>>;
   secondaryDimension: string;
 }) {
+  const { t } = useI18n();
   if (query.isFetching) {
     return (
       <AnalysisState
-        title="正在计算维度结果"
-        detail="聚合、排序和图表正在同步刷新。"
+        title={t("正在计算维度结果", "Calculating dimension results")}
+        detail={t(
+          "聚合、排序和图表正在同步刷新。",
+          "Aggregation, sorting, and charts are refreshing.",
+        )}
         loading
       />
     );
@@ -794,11 +867,11 @@ function DimensionAnalysis({
   if (query.error || !query.data) {
     return (
       <AnalysisState
-        title="无法生成维度分析"
+        title={t("无法生成维度分析", "Unable to generate dimension analysis")}
         detail={
           query.error instanceof Error
             ? query.error.message
-            : "请调整字段配置。"
+            : t("请调整字段配置。", "Adjust the field configuration.")
         }
       />
     );
@@ -810,24 +883,28 @@ function DimensionAnalysis({
           <div>
             <small>DIMENSION BREAKDOWN</small>
             <h2>
-              {metricAlias} 按 {dimension}
-              {secondaryDimension ? ` / ${secondaryDimension}` : ""} 拆解
+              {metricAlias} {t("按", "by")} {dimension}
+              {secondaryDimension ? ` / ${secondaryDimension}` : ""}{" "}
+              {t("拆解", "breakdown")}
             </h2>
           </div>
-          <div className="chart-mode-switch" aria-label="图表类型">
+          <div
+            className="chart-mode-switch"
+            aria-label={t("图表类型", "Chart type")}
+          >
             <button
               className={chartType === "bar" ? "is-active" : ""}
               onClick={() => onChartTypeChange("bar")}
               type="button"
             >
-              柱状图
+              {t("柱状图", "Bar")}
             </button>
             <button
               className={chartType === "line" ? "is-active" : ""}
               onClick={() => onChartTypeChange("line")}
               type="button"
             >
-              折线图
+              {t("折线图", "Line")}
             </button>
           </div>
         </div>
@@ -854,12 +931,15 @@ function AggregateChart({
   dimensions: string[];
   metricAlias: string;
 }) {
+  const { t } = useI18n();
   const chartRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!chartRef.current) return;
     const chart = init(chartRef.current);
     const labels = data.rows.map((row) =>
-      dimensions.map((field) => String(row[field] ?? "空值")).join(" / "),
+      dimensions
+        .map((field) => String(row[field] ?? t("空值", "Null")))
+        .join(" / "),
     );
     const values = data.rows.map((row) => Number(row[metricAlias] ?? 0));
     const option: EChartsCoreOption = {
@@ -900,22 +980,28 @@ function AggregateChart({
       window.removeEventListener("resize", resize);
       chart.dispose();
     };
-  }, [chartType, data, dimensions, metricAlias]);
+  }, [chartType, data, dimensions, metricAlias, t]);
   return (
-    <div className="analysis-chart" aria-label="维度分析图表" ref={chartRef} />
+    <div
+      className="analysis-chart"
+      aria-label={t("维度分析图表", "Dimension analysis chart")}
+      ref={chartRef}
+    />
   );
 }
 
 function AnalysisTable({ data }: { data: AnalysisResponse }) {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   return (
     <section className="analysis-panel analysis-table-panel">
       <div className="analysis-panel-heading">
         <div>
           <small>RESULT DETAIL</small>
-          <h2>聚合明细</h2>
+          <h2>{t("聚合明细", "Aggregate details")}</h2>
         </div>
         <span>
-          {data.rows.length} / {data.total_groups} 个分组
+          {formatLocaleNumber(data.rows.length)} /{" "}
+          {formatLocaleNumber(data.total_groups)} {t("个分组", "groups")}
         </span>
       </div>
       <div className="analysis-table-wrap">
@@ -949,17 +1035,27 @@ function StatisticsView({
   data?: StatisticsResponse;
   isLoading: boolean;
 }) {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   if (isLoading)
     return (
       <AnalysisState
-        title="正在计算描述统计"
-        detail="正在整理分布、分位数和离散程度。"
+        title={t("正在计算描述统计", "Calculating descriptive statistics")}
+        detail={t(
+          "正在整理分布、分位数和离散程度。",
+          "Preparing distributions, percentiles, and dispersion.",
+        )}
         loading
       />
     );
   if (!data)
     return (
-      <AnalysisState title="暂无统计结果" detail="当前数据集没有可分析字段。" />
+      <AnalysisState
+        title={t("暂无统计结果", "No statistics available")}
+        detail={t(
+          "当前数据集没有可分析字段。",
+          "The current dataset has no fields to analyze.",
+        )}
+      />
     );
   return (
     <div className="statistics-grid">
@@ -967,19 +1063,22 @@ function StatisticsView({
         <div className="analysis-panel-heading">
           <div>
             <small>DESCRIPTIVE STATISTICS</small>
-            <h2>数值字段概览</h2>
+            <h2>{t("数值字段概览", "Numeric field overview")}</h2>
           </div>
-          <span>{data.numeric_fields.length} 个字段</span>
+          <span>
+            {formatLocaleNumber(data.numeric_fields.length)}{" "}
+            {t("个字段", "fields")}
+          </span>
         </div>
         <div className="analysis-table-wrap">
           <table>
             <thead>
               <tr>
-                <th>字段</th>
-                <th>均值</th>
-                <th>中位数</th>
-                <th>最小 / 最大</th>
-                <th>标准差</th>
+                <th>{t("字段", "Field")}</th>
+                <th>{t("均值", "Mean")}</th>
+                <th>{t("中位数", "Median")}</th>
+                <th>{t("最小 / 最大", "Min / Max")}</th>
+                <th>{t("标准差", "Std. dev.")}</th>
                 <th>P25 / P75</th>
               </tr>
             </thead>
@@ -1010,7 +1109,7 @@ function StatisticsView({
         <div className="analysis-panel-heading">
           <div>
             <small>CATEGORY DISTRIBUTION</small>
-            <h2>分类字段分布</h2>
+            <h2>{t("分类字段分布", "Categorical distributions")}</h2>
           </div>
         </div>
         <div className="category-list">
@@ -1018,7 +1117,10 @@ function StatisticsView({
             <div className="category-row" key={field.field}>
               <div>
                 <strong>{field.field}</strong>
-                <span>{field.distinct_count} 个不同值</span>
+                <span>
+                  {formatLocaleNumber(field.distinct_count)}{" "}
+                  {t("个不同值", "distinct values")}
+                </span>
               </div>
               <div className="category-values">
                 {field.top_values.slice(0, 4).map((item) => (
@@ -1048,26 +1150,38 @@ function CorrelationView({
   isLoading: boolean;
   numericFields: DatasetField[];
 }) {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   if (numericFields.length < 2)
     return (
       <AnalysisState
-        title="至少需要两个数值字段"
-        detail="请在清洗阶段转换字段类型，或选择包含多个数值字段的数据集。"
+        title={t(
+          "至少需要两个数值字段",
+          "At least two numeric fields are required",
+        )}
+        detail={t(
+          "请在清洗阶段转换字段类型，或选择包含多个数值字段的数据集。",
+          "Convert field types during cleaning or select a dataset with multiple numeric fields.",
+        )}
       />
     );
   if (isLoading)
     return (
       <AnalysisState
-        title="正在计算相关系数"
-        detail="使用完整数值观测生成 Pearson 相关矩阵。"
+        title={t("正在计算相关系数", "Calculating correlations")}
+        detail={t(
+          "使用完整数值观测生成 Pearson 相关矩阵。",
+          "Generating a Pearson correlation matrix from complete numeric observations.",
+        )}
         loading
       />
     );
   if (error || !data)
     return (
       <AnalysisState
-        title="无法生成相关矩阵"
-        detail={error?.message ?? "请检查字段数据。"}
+        title={t("无法生成相关矩阵", "Unable to generate correlation matrix")}
+        detail={
+          error?.message ?? t("请检查字段数据。", "Check the field data.")
+        }
       />
     );
   return (
@@ -1075,9 +1189,12 @@ function CorrelationView({
       <div className="analysis-panel-heading">
         <div>
           <small>CORRELATION MATRIX</small>
-          <h2>数值字段相关性</h2>
+          <h2>{t("数值字段相关性", "Numeric field correlation")}</h2>
         </div>
-        <span>{data.observations} 条完整观测</span>
+        <span>
+          {formatLocaleNumber(data.observations)}{" "}
+          {t("条完整观测", "complete observations")}
+        </span>
       </div>
       <div
         className="correlation-matrix"
@@ -1106,11 +1223,11 @@ function CorrelationView({
         ])}
       </div>
       <div className="correlation-legend">
-        <span>负相关</span>
+        <span>{t("负相关", "Negative")}</span>
         <i />
-        <span>无相关</span>
+        <span>{t("无相关", "None")}</span>
         <i />
-        <span>正相关</span>
+        <span>{t("正相关", "Positive")}</span>
       </div>
     </section>
   );
@@ -1129,37 +1246,53 @@ function RegressionView({
   isLoading: boolean;
   target: string;
 }) {
+  const { formatNumber: formatLocaleNumber, t } = useI18n();
   if (!feature || !target)
     return (
       <AnalysisState
-        title="至少需要两个数值字段"
-        detail="第一个数值字段作为特征，第二个作为预测目标。"
+        title={t(
+          "至少需要两个数值字段",
+          "At least two numeric fields are required",
+        )}
+        detail={t(
+          "第一个数值字段作为特征，第二个作为预测目标。",
+          "The first numeric field is the feature and the second is the prediction target.",
+        )}
       />
     );
   if (isLoading)
     return (
       <AnalysisState
-        title="正在拟合线性模型"
-        detail="正在计算系数、拟合优度和误差。"
+        title={t("正在拟合线性模型", "Fitting linear model")}
+        detail={t(
+          "正在计算系数、拟合优度和误差。",
+          "Calculating coefficients, fit quality, and error.",
+        )}
         loading
       />
     );
   if (error || !data)
     return (
       <AnalysisState
-        title="模型拟合失败"
-        detail={error?.message ?? "请检查数值字段分布。"}
+        title={t("模型拟合失败", "Model fitting failed")}
+        detail={
+          error?.message ??
+          t("请检查数值字段分布。", "Check the numeric field distribution.")
+        }
       />
     );
   return (
     <>
-      <section className="model-metrics" aria-label="模型指标">
+      <section
+        className="model-metrics"
+        aria-label={t("模型指标", "Model metrics")}
+      >
         <div>
-          <span>特征 X</span>
+          <span>{t("特征 X", "Feature X")}</span>
           <strong>{feature}</strong>
         </div>
         <div>
-          <span>目标 Y</span>
+          <span>{t("目标 Y", "Target Y")}</span>
           <strong>{target}</strong>
         </div>
         <div>
@@ -1171,7 +1304,7 @@ function RegressionView({
           <strong>{formatNumber(data.rmse)}</strong>
         </div>
         <div>
-          <span>模型方程</span>
+          <span>{t("模型方程", "Model equation")}</span>
           <strong>
             y = {data.slope.toFixed(3)}x + {data.intercept.toFixed(3)}
           </strong>
@@ -1182,10 +1315,16 @@ function RegressionView({
           <div>
             <small>LINEAR REGRESSION</small>
             <h2>
-              {target} 对 {feature} 的线性拟合
+              {t(
+                `${target} 对 ${feature} 的线性拟合`,
+                `${target} fitted against ${feature}`,
+              )}
             </h2>
           </div>
-          <span>{data.observations} 条观测</span>
+          <span>
+            {formatLocaleNumber(data.observations)}{" "}
+            {t("条观测", "observations")}
+          </span>
         </div>
         <RegressionChart data={data} />
       </section>
@@ -1194,6 +1333,7 @@ function RegressionView({
 }
 
 function RegressionChart({ data }: { data: RegressionResponse }) {
+  const { t } = useI18n();
   const chartRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!chartRef.current) return;
@@ -1201,17 +1341,20 @@ function RegressionChart({ data }: { data: RegressionResponse }) {
     chart.setOption({
       color: ["#4fc3f7", "#ff9fa5"],
       grid: { bottom: 48, left: 58, right: 25, top: 35 },
-      legend: { data: ["实际值", "预测线"], textStyle: { color: "#9aa9c2" } },
+      legend: {
+        data: [t("实际值", "Actual"), t("预测线", "Prediction")],
+        textStyle: { color: "#9aa9c2" },
+      },
       series: [
         {
           data: data.points.map((point) => [point.feature, point.actual]),
-          name: "实际值",
+          name: t("实际值", "Actual"),
           symbolSize: 9,
           type: "scatter",
         },
         {
           data: data.points.map((point) => [point.feature, point.predicted]),
-          name: "预测线",
+          name: t("预测线", "Prediction"),
           showSymbol: false,
           smooth: true,
           type: "line",
@@ -1235,9 +1378,13 @@ function RegressionChart({ data }: { data: RegressionResponse }) {
       window.removeEventListener("resize", resize);
       chart.dispose();
     };
-  }, [data]);
+  }, [data, t]);
   return (
-    <div className="analysis-chart" aria-label="线性回归图表" ref={chartRef} />
+    <div
+      className="analysis-chart"
+      aria-label={t("线性回归图表", "Linear regression chart")}
+      ref={chartRef}
+    />
   );
 }
 
