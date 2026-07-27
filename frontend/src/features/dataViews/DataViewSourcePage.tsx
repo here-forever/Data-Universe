@@ -2,26 +2,41 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   Boxes,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Filter,
   LayoutDashboard,
+  MousePointer2,
+  Palette,
+  Plus,
   RefreshCcw,
   Save,
   Table2,
+  Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useI18n } from "../../i18n";
 import {
   createChart,
   createDashboard,
+  exportDashboard,
   getDataViewPreview,
   listCharts,
+  listDashboardExports,
   listDashboards,
   listDataViews,
+  updateDashboard,
   type ChartDefinition,
   type DataView,
   type DataViewPreviewResponse,
   type DashboardDefinition,
+  type ReportExportDefinition,
+  type ReportExportFormat,
 } from "./api";
 import { ChartPreview } from "./ChartPreview";
 import {
@@ -35,11 +50,19 @@ import {
   type ChartType,
 } from "./chartConfig";
 import { DashboardPreview } from "./DashboardPreview";
+import {
+  createLayoutItems,
+  normalizeDashboardLayout,
+  reconcileLayoutItems,
+  type DashboardActiveSelection,
+  type DashboardGlobalFilter,
+  type DashboardLayoutItem,
+  type DashboardTheme,
+  type LayoutMode,
+} from "./reportLayout";
 
 const DEFAULT_PROJECT_ID = "prj_demo";
 const PAGE_SIZE = 20;
-type LayoutMode = "dashboard" | "report" | "screen";
-
 interface DataViewSourcePageProps {
   mode: "charts" | "dashboards";
 }
@@ -62,6 +85,23 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("dashboard");
   const [selectedChartIds, setSelectedChartIds] = useState<string[]>([]);
   const [hasManualChartSelection, setHasManualChartSelection] = useState(false);
+  const [dashboardName, setDashboardName] = useState(
+    `${initialProjectId} ${t("仪表盘", "Dashboard")}`,
+  );
+  const [dashboardTheme, setDashboardTheme] =
+    useState<DashboardTheme>("aurora");
+  const [layoutItems, setLayoutItems] = useState<DashboardLayoutItem[]>([]);
+  const [globalFilters, setGlobalFilters] = useState<DashboardGlobalFilter[]>(
+    [],
+  );
+  const [activeSelections, setActiveSelections] = useState<
+    DashboardActiveSelection[]
+  >([]);
+  const [editingDashboardId, setEditingDashboardId] = useState<string | null>(
+    targetDashboardId,
+  );
+  const [editingDashboardVersion, setEditingDashboardVersion] = useState(1);
+  const loadedRouteDashboardRef = useRef<string | null>(null);
   const [chartState, setChartState] = useState<ChartBuilderState>(() =>
     createDefaultChartState(null, {
       chartSuffix: t("图表", "Chart"),
@@ -103,6 +143,17 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
     () => dashboardsQuery.data?.items ?? [],
     [dashboardsQuery.data],
   );
+  const targetDashboard = useMemo(
+    () =>
+      dashboards.find((dashboard) => dashboard.id === targetDashboardId) ??
+      null,
+    [dashboards, targetDashboardId],
+  );
+  const exportsQuery = useQuery({
+    queryKey: ["dashboard-exports", editingDashboardId],
+    queryFn: () => listDashboardExports(editingDashboardId ?? ""),
+    enabled: Boolean(editingDashboardId) && mode === "dashboards",
+  });
   const targetChart = useMemo(
     () => charts.find((chart) => chart.id === targetChartId) ?? null,
     [charts, targetChartId],
@@ -134,6 +185,27 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
           fallbackName: t("数据视图图表", "Data view chart"),
         })
       : chartState;
+
+  useEffect(() => {
+    if (
+      !targetDashboard ||
+      loadedRouteDashboardRef.current === targetDashboard.id
+    ) {
+      return;
+    }
+    const layout = normalizeDashboardLayout(targetDashboard);
+    loadedRouteDashboardRef.current = targetDashboard.id;
+    setEditingDashboardId(targetDashboard.id);
+    setEditingDashboardVersion(targetDashboard.configuration_version ?? 1);
+    setDashboardName(targetDashboard.name);
+    setLayoutMode(layout.mode);
+    setDashboardTheme(layout.theme);
+    setLayoutItems(layout.items);
+    setSelectedChartIds(layout.items.map((item) => item.chart_id));
+    setHasManualChartSelection(true);
+    setGlobalFilters(layout.global_filters);
+    setActiveSelections(layout.active_selections);
+  }, [targetDashboard]);
 
   const createChartMutation = useMutation({
     mutationFn: () => {
@@ -182,40 +254,56 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
         );
       }
 
+      const layout = {
+        schema_version: 1,
+        mode: layoutMode,
+        theme: dashboardTheme,
+        items: reconcileLayoutItems(layoutItems, layoutChartIds, layoutMode),
+        global_filters: globalFilters,
+        active_selections: activeSelections,
+      };
+      const name = dashboardName.trim() || `${submittedProjectId} Report`;
+      if (editingDashboardId) {
+        return updateDashboard(editingDashboardId, {
+          expected_version: editingDashboardVersion,
+          name,
+          layout,
+        });
+      }
       return createDashboard({
         project_id: submittedProjectId,
-        name:
-          layoutMode === "dashboard"
-            ? `${submittedProjectId} ${t("仪表盘", "Dashboard")}`
-            : layoutMode === "screen"
-              ? `${submittedProjectId} ${t("数据大屏", "Data Screen")}`
-              : `${submittedProjectId} ${t("报表", "Report")}`,
-        layout: {
-          mode: layoutMode,
-          items: layoutChartIds.map((chartId, index) => ({
-            chart_id: chartId,
-            x:
-              layoutMode === "screen"
-                ? (index % 3) * 4
-                : layoutMode === "dashboard"
-                  ? (index % 2) * 6
-                  : 0,
-            y:
-              layoutMode === "screen"
-                ? Math.floor(index / 3) * 4
-                : layoutMode === "dashboard"
-                  ? Math.floor(index / 2) * 4
-                  : index * 6,
-            w:
-              layoutMode === "screen" ? 4 : layoutMode === "dashboard" ? 6 : 12,
-            h: layoutMode === "report" ? 6 : 4,
-          })),
-        },
+        name,
+        layout,
       });
     },
-    onSuccess: () => {
+    onSuccess: (dashboard) => {
+      const layout = normalizeDashboardLayout(dashboard);
+      setEditingDashboardId(dashboard.id);
+      setEditingDashboardVersion(dashboard.configuration_version ?? 1);
+      setDashboardName(dashboard.name);
+      setLayoutItems(layout.items);
       void queryClient.invalidateQueries({
         queryKey: ["dashboards", submittedProjectId],
+      });
+    },
+  });
+
+  const exportDashboardMutation = useMutation({
+    mutationFn: (format: ReportExportFormat) => {
+      if (!editingDashboardId) {
+        throw new Error(
+          t("请先保存报表。", "Save the report before exporting."),
+        );
+      }
+      return exportDashboard(editingDashboardId, format);
+    },
+    onSuccess: ({ blob, fileName }) => {
+      downloadBlob(blob, fileName ?? "report-export");
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard-exports", editingDashboardId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["tasks", submittedProjectId],
       });
     },
   });
@@ -226,6 +314,7 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
     setSelectedDataViewId(null);
     setSelectedChartIds([]);
     setHasManualChartSelection(false);
+    resetDashboardDraft(projectId.trim());
     setChartState(
       createDefaultChartState(null, {
         chartSuffix: t("图表", "Chart"),
@@ -235,6 +324,7 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
     setChartStateDataViewId(null);
     createChartMutation.reset();
     createDashboardMutation.reset();
+    exportDashboardMutation.reset();
   }
 
   function selectDataView(dataView: DataView) {
@@ -246,9 +336,58 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
       }),
     );
     setChartStateDataViewId(dataView.id);
+    if (isCharts) {
+      setSelectedChartIds([]);
+      setHasManualChartSelection(false);
+    }
+    createChartMutation.reset();
+    createDashboardMutation.reset();
+  }
+
+  function resetDashboardDraft(nextProjectId = submittedProjectId) {
+    setEditingDashboardId(null);
+    setEditingDashboardVersion(1);
+    setDashboardName(`${nextProjectId} ${t("仪表盘", "Dashboard")}`);
+    setLayoutMode("dashboard");
+    setDashboardTheme("aurora");
+    setLayoutItems([]);
     setSelectedChartIds([]);
     setHasManualChartSelection(false);
-    createChartMutation.reset();
+    setGlobalFilters([]);
+    setActiveSelections([]);
+    createDashboardMutation.reset();
+    exportDashboardMutation.reset();
+  }
+
+  function openDashboard(dashboard: DashboardDefinition) {
+    const layout = normalizeDashboardLayout(dashboard);
+    setEditingDashboardId(dashboard.id);
+    setEditingDashboardVersion(dashboard.configuration_version ?? 1);
+    setDashboardName(dashboard.name);
+    setLayoutMode(layout.mode);
+    setDashboardTheme(layout.theme);
+    setLayoutItems(layout.items);
+    setSelectedChartIds(layout.items.map((item) => item.chart_id));
+    setHasManualChartSelection(true);
+    setGlobalFilters(layout.global_filters);
+    setActiveSelections(layout.active_selections);
+    createDashboardMutation.reset();
+    exportDashboardMutation.reset();
+  }
+
+  function toggleActiveSelection(selection: DashboardActiveSelection) {
+    setActiveSelections((current) => {
+      const existing = current.find(
+        (item) => item.chart_id === selection.chart_id,
+      );
+      if (existing?.value === selection.value) {
+        return current.filter((item) => item.chart_id !== selection.chart_id);
+      }
+      return [
+        ...current.filter((item) => item.chart_id !== selection.chart_id),
+        selection,
+      ];
+    });
     createDashboardMutation.reset();
   }
 
@@ -360,25 +499,72 @@ export function DataViewSourcePage({ mode }: DataViewSourcePageProps) {
                   : charts
               }
               dashboards={dashboards}
+              exports={exportsQuery.data?.items ?? []}
               layoutMode={layoutMode}
+              dashboardName={dashboardName}
+              dashboardTheme={dashboardTheme}
+              layoutItems={layoutItems}
+              globalFilters={globalFilters}
+              activeSelections={activeSelections}
+              editingDashboardId={editingDashboardId}
+              editingDashboardVersion={editingDashboardVersion}
               isLoading={dashboardsQuery.isLoading || chartsQuery.isLoading}
               error={dashboardsQuery.error ?? chartsQuery.error}
               createdDashboard={createDashboardMutation.data}
               createError={createDashboardMutation.error}
               isCreating={createDashboardMutation.isPending}
+              exportError={exportDashboardMutation.error}
+              isExporting={exportDashboardMutation.isPending}
               selectedChartIds={selectedChartIds}
               hasManualChartSelection={hasManualChartSelection}
               targetDashboardId={targetDashboardId}
+              onDashboardNameChange={(name) => {
+                setDashboardName(name);
+                createDashboardMutation.reset();
+              }}
+              onDashboardThemeChange={(theme) => {
+                setDashboardTheme(theme);
+                createDashboardMutation.reset();
+              }}
+              onLayoutItemsChange={(items) => {
+                setLayoutItems(items);
+                createDashboardMutation.reset();
+              }}
+              onGlobalFiltersChange={(filters) => {
+                setGlobalFilters(filters);
+                createDashboardMutation.reset();
+              }}
+              onActiveSelectionsChange={(selections) => {
+                setActiveSelections(selections);
+                createDashboardMutation.reset();
+              }}
               onSelectedChartIdsChange={(chartIds) => {
                 setSelectedChartIds(chartIds);
+                setLayoutItems((current) =>
+                  reconcileLayoutItems(current, chartIds, layoutMode),
+                );
                 setHasManualChartSelection(true);
                 createDashboardMutation.reset();
               }}
               onLayoutModeChange={(nextMode) => {
+                if (
+                  !editingDashboardId &&
+                  dashboardName ===
+                    defaultDashboardName(submittedProjectId, layoutMode, t)
+                ) {
+                  setDashboardName(
+                    defaultDashboardName(submittedProjectId, nextMode, t),
+                  );
+                }
                 setLayoutMode(nextMode);
+                setLayoutItems(createLayoutItems(selectedChartIds, nextMode));
                 createDashboardMutation.reset();
               }}
+              onOpenDashboard={openDashboard}
+              onNewDashboard={() => resetDashboardDraft()}
+              onPointSelect={toggleActiveSelection}
               onCreate={() => createDashboardMutation.mutate()}
+              onExport={(format) => exportDashboardMutation.mutate(format)}
             />
           )}
           <PreviewPanel
@@ -612,33 +798,71 @@ function ChartResourcePanel({
 function DashboardResourcePanel({
   charts,
   dashboards,
+  exports,
   layoutMode,
+  dashboardName,
+  dashboardTheme,
+  layoutItems,
+  globalFilters,
+  activeSelections,
+  editingDashboardId,
+  editingDashboardVersion,
   isLoading,
   error,
   createdDashboard,
   createError,
   isCreating,
+  exportError,
+  isExporting,
   onLayoutModeChange,
+  onDashboardNameChange,
+  onDashboardThemeChange,
+  onLayoutItemsChange,
+  onGlobalFiltersChange,
+  onActiveSelectionsChange,
   selectedChartIds,
   hasManualChartSelection,
   targetDashboardId,
   onSelectedChartIdsChange,
+  onOpenDashboard,
+  onNewDashboard,
+  onPointSelect,
   onCreate,
+  onExport,
 }: {
   charts: ChartDefinition[];
   dashboards: DashboardDefinition[];
+  exports: ReportExportDefinition[];
   layoutMode: LayoutMode;
+  dashboardName: string;
+  dashboardTheme: DashboardTheme;
+  layoutItems: DashboardLayoutItem[];
+  globalFilters: DashboardGlobalFilter[];
+  activeSelections: DashboardActiveSelection[];
+  editingDashboardId: string | null;
+  editingDashboardVersion: number;
   isLoading: boolean;
   error: Error | null;
   createdDashboard?: DashboardDefinition;
   createError: Error | null;
   isCreating: boolean;
+  exportError: Error | null;
+  isExporting: boolean;
   onLayoutModeChange: (mode: LayoutMode) => void;
+  onDashboardNameChange: (name: string) => void;
+  onDashboardThemeChange: (theme: DashboardTheme) => void;
+  onLayoutItemsChange: (items: DashboardLayoutItem[]) => void;
+  onGlobalFiltersChange: (filters: DashboardGlobalFilter[]) => void;
+  onActiveSelectionsChange: (selections: DashboardActiveSelection[]) => void;
   selectedChartIds: string[];
   hasManualChartSelection: boolean;
   targetDashboardId: string | null;
   onSelectedChartIdsChange: (chartIds: string[]) => void;
+  onOpenDashboard: (dashboard: DashboardDefinition) => void;
+  onNewDashboard: () => void;
+  onPointSelect: (selection: DashboardActiveSelection) => void;
   onCreate: () => void;
+  onExport: (format: ReportExportFormat) => void;
 }) {
   const { t } = useI18n();
   const activeChartIds =
@@ -647,65 +871,252 @@ function DashboardResourcePanel({
       : !hasManualChartSelection && charts[0]
         ? [charts[0].id]
         : [];
+  const activeItems = reconcileLayoutItems(
+    layoutItems,
+    activeChartIds,
+    layoutMode,
+  );
+  const chartById = new Map(charts.map((chart) => [chart.id, chart]));
+  const availableFields = Array.from(
+    new Map(
+      charts.flatMap((chart) =>
+        [chart.config.dimension, chart.config.metric].flatMap((field) =>
+          typeof field === "string" && field
+            ? [
+                [
+                  `${chart.data_view_id}::${field}`,
+                  { field, dataViewId: chart.data_view_id },
+                ] as const,
+              ]
+            : [],
+        ),
+      ),
+    ).values(),
+  );
 
   function toggleChart(chartId: string) {
-    if (selectedChartIds.includes(chartId)) {
-      onSelectedChartIdsChange(selectedChartIds.filter((id) => id !== chartId));
+    if (activeChartIds.includes(chartId)) {
+      onSelectedChartIdsChange(activeChartIds.filter((id) => id !== chartId));
       return;
     }
-    onSelectedChartIdsChange([...selectedChartIds, chartId]);
+    onSelectedChartIdsChange([...activeChartIds, chartId]);
+  }
+
+  function addFilter() {
+    const firstField = availableFields[0];
+    if (!firstField) return;
+    onGlobalFiltersChange([
+      ...globalFilters,
+      {
+        id: `filter_${Date.now()}`,
+        field: firstField.field,
+        operator: "eq",
+        value: "",
+        data_view_id: firstField.dataViewId,
+      },
+    ]);
+  }
+
+  function updateFilter(
+    filterId: string,
+    patch: Partial<DashboardGlobalFilter>,
+  ) {
+    onGlobalFiltersChange(
+      globalFilters.map((filter) =>
+        filter.id === filterId ? { ...filter, ...patch } : filter,
+      ),
+    );
+  }
+
+  function updateLayoutItem(
+    chartId: string,
+    patch: Partial<DashboardLayoutItem>,
+  ) {
+    onLayoutItemsChange(
+      activeItems.map((item) =>
+        item.chart_id === chartId ? { ...item, ...patch } : item,
+      ),
+    );
+  }
+
+  function moveLayoutItem(chartId: string, direction: -1 | 1) {
+    const currentIndex = activeItems.findIndex(
+      (item) => item.chart_id === chartId,
+    );
+    const targetIndex = currentIndex + direction;
+    if (
+      currentIndex < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= activeItems.length
+    ) {
+      return;
+    }
+    const next = [...activeItems];
+    [next[currentIndex], next[targetIndex]] = [
+      next[targetIndex],
+      next[currentIndex],
+    ];
+    onLayoutItemsChange(
+      next.map((item, index) => ({ ...item, y: index * item.h })),
+    );
   }
 
   return (
-    <div className="min-w-0 rounded-md border border-line bg-panel shadow-panel">
-      <PanelHeader
-        icon={<Boxes className="h-4 w-4 text-brand" />}
-        title={t("仪表盘与报表构建器", "Dashboard and report builder")}
-      />
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4">
+    <div className="report-builder min-w-0 overflow-hidden rounded-2xl border border-violet-200/70 bg-panel shadow-panel">
+      <div className="report-builder-header flex flex-col gap-3 border-b border-violet-100 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm">
+            <Boxes className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-ink">
+              {t("报表与交付工作台", "Report delivery studio")}
+            </h3>
+            <p className="mt-1 text-xs text-muted">
+              {editingDashboardId
+                ? t(
+                    `正在编辑版本 ${editingDashboardVersion}`,
+                    `Editing version ${editingDashboardVersion}`,
+                  )
+                : t("新建未保存草稿", "New unsaved draft")}
+            </p>
+          </div>
+        </div>
+        <button
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-violet-200 bg-white px-4 text-xs font-semibold text-violet-700 transition hover:-translate-y-0.5 hover:shadow-sm"
+          onClick={onNewDashboard}
+          type="button"
+        >
+          <Plus className="h-4 w-4" />
+          {t("新建报表", "New report")}
+        </button>
+      </div>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 p-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-5">
+          {activeSelections.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/80 px-3 py-2">
+              <MousePointer2 className="h-4 w-4 text-violet-600" />
+              <span className="text-xs font-semibold text-violet-800">
+                {t("联动选择", "Active selections")}
+              </span>
+              {activeSelections.map((selection) => (
+                <button
+                  className="rounded-full bg-white px-2.5 py-1 text-xs text-violet-700 shadow-sm transition hover:bg-violet-100"
+                  key={selection.chart_id}
+                  onClick={() =>
+                    onActiveSelectionsChange(
+                      activeSelections.filter(
+                        (item) => item.chart_id !== selection.chart_id,
+                      ),
+                    )
+                  }
+                  type="button"
+                >
+                  {selection.field}: {String(selection.value)} ×
+                </button>
+              ))}
+            </div>
+          ) : null}
           <DashboardPreview
             charts={charts}
+            filters={globalFilters}
+            items={activeItems}
             mode={layoutMode}
-            selectedChartIds={activeChartIds}
+            onPointSelect={onPointSelect}
+            selections={activeSelections}
+            theme={dashboardTheme}
           />
-          <ResourceList
-            emptyTitle={
-              isLoading
-                ? t("正在加载布局", "Loading layouts")
-                : t("暂无已保存布局", "No layouts saved yet")
-            }
-            error={error}
-            items={dashboards}
-            renderItem={(dashboard) => (
-              <ResourceTile
-                key={dashboard.id}
-                isActive={dashboard.id === targetDashboardId}
-                title={dashboard.name}
-                meta={`${String(dashboard.layout.mode ?? "dashboard")} - ${dashboard.id}`}
-              />
-            )}
-          />
-        </div>
-        <div className="space-y-3 rounded-md border border-amber/20 bg-amber/10 p-3">
-          <label>
-            <span className="text-xs font-semibold uppercase text-amber">
-              {t("布局模式", "Layout mode")}
-            </span>
-            <select
-              className="mt-2 h-10 w-full rounded-md border border-amber/20 bg-white px-3 text-sm text-ink outline-none transition focus:border-amber focus:ring-2 focus:ring-amber/20"
-              value={layoutMode}
-              onChange={(event) =>
-                onLayoutModeChange(event.target.value as LayoutMode)
+          <section className="rounded-xl border border-line bg-white/80 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted">
+                  {t("已保存报表", "Saved reports")}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {t(
+                    "点击即可恢复完整配置",
+                    "Open to restore the full configuration",
+                  )}
+                </p>
+              </div>
+              <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                {dashboards.length}
+              </span>
+            </div>
+            <ResourceList
+              emptyTitle={
+                isLoading
+                  ? t("正在加载布局", "Loading layouts")
+                  : t("暂无已保存布局", "No layouts saved yet")
               }
-            >
-              <option value="dashboard">{t("仪表盘", "Dashboard")}</option>
-              <option value="report">{t("自由报表", "Free report")}</option>
-              <option value="screen">{t("数据大屏", "Data screen")}</option>
-            </select>
+              error={error}
+              items={dashboards}
+              renderItem={(dashboard) => (
+                <ResourceTile
+                  key={dashboard.id}
+                  isActive={
+                    dashboard.id === editingDashboardId ||
+                    dashboard.id === targetDashboardId
+                  }
+                  title={dashboard.name}
+                  meta={`${String(dashboard.layout.mode ?? "dashboard")} · v${dashboard.configuration_version ?? 1}`}
+                  onClick={() => onOpenDashboard(dashboard)}
+                />
+              )}
+            />
+          </section>
+        </div>
+        <div className="report-builder-panel space-y-4 rounded-2xl border border-violet-200/80 p-3.5">
+          <label>
+            <span className="text-xs font-semibold uppercase text-violet-700">
+              {t("报表名称", "Report name")}
+            </span>
+            <input
+              aria-label={t("报表名称", "Report name")}
+              className="mt-2 h-10 w-full rounded-lg border border-violet-200 bg-white px-3 text-sm text-ink outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+              onChange={(event) => onDashboardNameChange(event.target.value)}
+              value={dashboardName}
+            />
           </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label>
+              <span className="text-xs font-semibold uppercase text-violet-700">
+                {t("布局模式", "Layout mode")}
+              </span>
+              <select
+                aria-label={t("布局模式", "Layout mode")}
+                className="mt-2 h-10 w-full rounded-lg border border-violet-200 bg-white px-3 text-sm text-ink outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+                value={layoutMode}
+                onChange={(event) =>
+                  onLayoutModeChange(event.target.value as LayoutMode)
+                }
+              >
+                <option value="dashboard">{t("仪表盘", "Dashboard")}</option>
+                <option value="report">{t("自由报表", "Free report")}</option>
+                <option value="screen">{t("数据大屏", "Data screen")}</option>
+              </select>
+            </label>
+            <label>
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase text-violet-700">
+                <Palette className="h-3.5 w-3.5" />
+                {t("主题", "Theme")}
+              </span>
+              <select
+                aria-label={t("报表主题", "Report theme")}
+                className="mt-2 h-10 w-full rounded-lg border border-violet-200 bg-white px-3 text-sm text-ink outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+                onChange={(event) =>
+                  onDashboardThemeChange(event.target.value as DashboardTheme)
+                }
+                value={dashboardTheme}
+              >
+                <option value="aurora">{t("极光", "Aurora")}</option>
+                <option value="warm">{t("暖霞", "Warm")}</option>
+                <option value="minimal">{t("简洁", "Minimal")}</option>
+              </select>
+            </label>
+          </div>
           <div>
-            <p className="text-xs font-semibold uppercase text-amber">
+            <p className="text-xs font-semibold uppercase text-violet-700">
               {t("图表", "Charts")}
             </p>
             <div className="mt-2 max-h-64 space-y-2 overflow-auto">
@@ -716,7 +1127,7 @@ function DashboardResourcePanel({
               ) : (
                 charts.map((chart) => (
                   <label
-                    className="flex cursor-pointer items-start gap-3 rounded-md border border-line bg-white px-3 py-3 text-sm text-ink transition hover:border-amber"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-white px-3 py-3 text-sm text-ink transition hover:border-violet-300 hover:shadow-sm"
                     key={chart.id}
                   >
                     <input
@@ -725,7 +1136,7 @@ function DashboardResourcePanel({
                         `Select ${chart.name}`,
                       )}
                       checked={activeChartIds.includes(chart.id)}
-                      className="mt-1 h-4 w-4 rounded border-line text-amber"
+                      className="mt-1 h-4 w-4 rounded border-line text-violet-600"
                       onChange={() => toggleChart(chart.id)}
                       type="checkbox"
                     />
@@ -742,8 +1153,201 @@ function DashboardResourcePanel({
               )}
             </div>
           </div>
+          {activeItems.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold uppercase text-violet-700">
+                {t("布局编排", "Layout arrangement")}
+              </p>
+              <div className="mt-2 space-y-2">
+                {activeItems.map((item, index) => {
+                  const chart = chartById.get(item.chart_id);
+                  return (
+                    <div
+                      className="rounded-lg border border-violet-100 bg-white p-2.5"
+                      key={item.chart_id}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="min-w-0 truncate text-xs font-semibold text-ink">
+                          {chart?.name ?? item.chart_id}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            aria-label={t("上移图表", "Move chart up")}
+                            className="rounded p-1 text-muted transition hover:bg-violet-50 hover:text-violet-700 disabled:opacity-30"
+                            disabled={index === 0}
+                            onClick={() => moveLayoutItem(item.chart_id, -1)}
+                            type="button"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            aria-label={t("下移图表", "Move chart down")}
+                            className="rounded p-1 text-muted transition hover:bg-violet-50 hover:text-violet-700 disabled:opacity-30"
+                            disabled={index === activeItems.length - 1}
+                            onClick={() => moveLayoutItem(item.chart_id, 1)}
+                            type="button"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                          <button
+                            aria-label={t("移除图表", "Remove chart")}
+                            className="rounded p-1 text-muted transition hover:bg-rose-50 hover:text-rose-600"
+                            onClick={() => toggleChart(item.chart_id)}
+                            type="button"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <label className="text-[11px] text-muted">
+                          {t("宽度", "Width")}
+                          <select
+                            aria-label={t(
+                              `${chart?.name ?? ""} 宽度`,
+                              `${chart?.name ?? ""} width`,
+                            )}
+                            className="mt-1 h-8 w-full rounded border border-line bg-slate-50 px-2 text-xs text-ink"
+                            onChange={(event) =>
+                              updateLayoutItem(item.chart_id, {
+                                w: Number(event.target.value),
+                              })
+                            }
+                            value={item.w}
+                          >
+                            <option value={4}>4/12</option>
+                            <option value={6}>6/12</option>
+                            <option value={8}>8/12</option>
+                            <option value={12}>12/12</option>
+                          </select>
+                        </label>
+                        <label className="text-[11px] text-muted">
+                          {t("高度", "Height")}
+                          <select
+                            aria-label={t(
+                              `${chart?.name ?? ""} 高度`,
+                              `${chart?.name ?? ""} height`,
+                            )}
+                            className="mt-1 h-8 w-full rounded border border-line bg-slate-50 px-2 text-xs text-ink"
+                            onChange={(event) =>
+                              updateLayoutItem(item.chart_id, {
+                                h: Number(event.target.value),
+                              })
+                            }
+                            value={item.h}
+                          >
+                            <option value={3}>{t("紧凑", "Compact")}</option>
+                            <option value={4}>{t("标准", "Standard")}</option>
+                            <option value={6}>{t("宽松", "Spacious")}</option>
+                            <option value={8}>{t("展示", "Showcase")}</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase text-sky-800">
+                <Filter className="h-4 w-4" />
+                {t("全局筛选", "Global filters")}
+              </p>
+              <button
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-sm disabled:opacity-40"
+                disabled={availableFields.length === 0}
+                onClick={addFilter}
+                type="button"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("添加", "Add")}
+              </button>
+            </div>
+            <div className="mt-2 space-y-2">
+              {globalFilters.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-sky-200 bg-white/70 px-3 py-3 text-xs text-muted">
+                  {t(
+                    "添加筛选后，所有关联图表会同步响应。",
+                    "Filters update every compatible chart together.",
+                  )}
+                </p>
+              ) : (
+                globalFilters.map((filter) => (
+                  <div
+                    className="grid grid-cols-[minmax(0,1fr)_92px] gap-2 rounded-lg bg-white p-2"
+                    key={filter.id}
+                  >
+                    <select
+                      aria-label={t("筛选字段", "Filter field")}
+                      className="h-8 min-w-0 rounded border border-line bg-white px-2 text-xs text-ink"
+                      onChange={(event) => {
+                        const [dataViewId, field] =
+                          event.target.value.split("::");
+                        updateFilter(filter.id, {
+                          data_view_id: dataViewId,
+                          field,
+                        });
+                      }}
+                      value={`${filter.data_view_id ?? ""}::${filter.field}`}
+                    >
+                      {availableFields.map((field) => (
+                        <option
+                          key={`${field.dataViewId}::${field.field}`}
+                          value={`${field.dataViewId}::${field.field}`}
+                        >
+                          {field.field}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="inline-flex h-8 items-center justify-center gap-1 rounded border border-rose-100 text-xs text-rose-600 transition hover:bg-rose-50"
+                      onClick={() =>
+                        onGlobalFiltersChange(
+                          globalFilters.filter((item) => item.id !== filter.id),
+                        )
+                      }
+                      type="button"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {t("删除", "Remove")}
+                    </button>
+                    <select
+                      aria-label={t("筛选条件", "Filter operator")}
+                      className="h-8 rounded border border-line bg-white px-2 text-xs text-ink"
+                      onChange={(event) =>
+                        updateFilter(filter.id, {
+                          operator: event.target
+                            .value as DashboardGlobalFilter["operator"],
+                        })
+                      }
+                      value={filter.operator}
+                    >
+                      <option value="eq">=</option>
+                      <option value="neq">≠</option>
+                      <option value="contains">{t("包含", "contains")}</option>
+                      <option value="gt">&gt;</option>
+                      <option value="gte">≥</option>
+                      <option value="lt">&lt;</option>
+                      <option value="lte">≤</option>
+                    </select>
+                    <input
+                      aria-label={t("筛选值", "Filter value")}
+                      className="h-8 rounded border border-line bg-white px-2 text-xs text-ink"
+                      onChange={(event) =>
+                        updateFilter(filter.id, { value: event.target.value })
+                      }
+                      placeholder={t("输入筛选值", "Filter value")}
+                      value={String(filter.value ?? "")}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
           <button
-            className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-amber px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-45"
             disabled={activeChartIds.length === 0 || isCreating}
             onClick={onCreate}
             type="button"
@@ -751,8 +1355,63 @@ function DashboardResourcePanel({
             <Save className="h-4 w-4" />
             {isCreating
               ? t("保存中...", "Saving...")
-              : t("保存布局", "Save layout")}
+              : editingDashboardId
+                ? t("保存新版本", "Save new version")
+                : t("保存报表", "Save report")}
           </button>
+          <div>
+            <p className="text-xs font-semibold uppercase text-violet-700">
+              {t("导出交付", "Export delivery")}
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <ExportButton
+                disabled={!editingDashboardId || isExporting}
+                icon={<FileText className="h-4 w-4" />}
+                label="PDF"
+                onClick={() => onExport("pdf")}
+              />
+              <ExportButton
+                disabled={!editingDashboardId || isExporting}
+                icon={<FileSpreadsheet className="h-4 w-4" />}
+                label="Excel"
+                onClick={() => onExport("xlsx")}
+              />
+              <ExportButton
+                disabled={!editingDashboardId || isExporting}
+                icon={<Download className="h-4 w-4" />}
+                label="CSV"
+                onClick={() => onExport("csv")}
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {isExporting
+                ? t(
+                    "正在生成并登记导出任务...",
+                    "Generating and recording the export task...",
+                  )
+                : t(
+                    `已生成 ${exports.length} 个导出物`,
+                    `${exports.length} exports generated`,
+                  )}
+            </p>
+            {exports.length > 0 ? (
+              <div className="mt-2 space-y-1.5">
+                {exports.slice(0, 3).map((item) => (
+                  <div
+                    className="flex items-center justify-between gap-2 rounded-lg border border-violet-100 bg-white px-2.5 py-2 text-xs"
+                    key={item.id}
+                  >
+                    <span className="min-w-0 truncate text-ink">
+                      {item.file_name}
+                    </span>
+                    <span className="shrink-0 uppercase text-violet-700">
+                      {item.export_format}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
           {createdDashboard ? (
             <SuccessMessage
               message={t(
@@ -762,9 +1421,34 @@ function DashboardResourcePanel({
             />
           ) : null}
           {createError ? <Alert message={createError.message} /> : null}
+          {exportError ? <Alert message={exportError.message} /> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+function ExportButton({
+  disabled,
+  icon,
+  label,
+  onClick,
+}: {
+  disabled: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-violet-200 bg-white text-xs font-semibold text-violet-700 transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
@@ -802,21 +1486,40 @@ function ResourceTile({
   title,
   meta,
   isActive = false,
+  onClick,
 }: {
   title: string;
   meta: string;
   isActive?: boolean;
+  onClick?: () => void;
 }) {
-  return (
-    <div
-      aria-current={isActive ? "true" : undefined}
-      className={[
-        "rounded-md border px-3 py-3",
-        isActive ? "border-brand bg-blue-50" : "border-line bg-white",
-      ].join(" ")}
-    >
+  const className = [
+    "w-full rounded-lg border px-3 py-3 text-left transition",
+    isActive
+      ? "border-violet-400 bg-violet-50 shadow-sm"
+      : "border-line bg-white hover:border-violet-200 hover:bg-violet-50/40",
+  ].join(" ");
+  const content = (
+    <>
       <p className="truncate text-sm font-semibold text-ink">{title}</p>
       <p className="mt-1 truncate text-xs text-muted">{meta}</p>
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        aria-current={isActive ? "true" : undefined}
+        className={className}
+        onClick={onClick}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div aria-current={isActive ? "true" : undefined} className={className}>
+      {content}
     </div>
   );
 }
@@ -1062,4 +1765,29 @@ function formatCell(value: string | number | boolean | null | undefined) {
     return value ? "true" : "false";
   }
   return String(value);
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function defaultDashboardName(
+  projectId: string,
+  mode: LayoutMode,
+  t: (zh: string, en: string) => string,
+) {
+  if (mode === "screen") {
+    return `${projectId} ${t("数据大屏", "Data Screen")}`;
+  }
+  if (mode === "report") {
+    return `${projectId} ${t("报表", "Report")}`;
+  }
+  return `${projectId} ${t("仪表盘", "Dashboard")}`;
 }

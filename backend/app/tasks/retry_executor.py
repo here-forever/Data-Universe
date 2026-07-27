@@ -129,6 +129,16 @@ class TaskRetryExecutor:
                     DashboardCreateRequest.model_validate(payload)
                 )
                 return "dashboard", dashboard.id
+
+            if operation == "report_export":
+                dashboard_id = require_string(payload, "dashboard_id")
+                export_format = require_export_format(payload)
+                artifact, _ = self.visualizations.export_dashboard(
+                    dashboard_id,
+                    export_format,
+                    task_id=task.id,
+                )
+                return "report_export", artifact.id
         except ValidationError as error:
             raise AppError(
                 "Retry payload does not match the current operation schema",
@@ -147,4 +157,15 @@ def require_string(payload: dict[str, object], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
         raise AppError(f"Retry payload {key} is missing", "task_retry_payload_invalid", 400)
+    return value
+
+
+def require_export_format(payload: dict[str, object]) -> str:
+    value = payload.get("format")
+    if value not in {"csv", "xlsx", "pdf"}:
+        raise AppError(
+            "Retry payload export format is invalid",
+            "task_retry_payload_invalid",
+            400,
+        )
     return value

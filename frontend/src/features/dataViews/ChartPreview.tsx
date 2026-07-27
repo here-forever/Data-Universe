@@ -32,9 +32,16 @@ registerEChartsModules([
 interface ChartPreviewProps {
   rows: Array<Record<string, string | number | boolean | null>>;
   state: ChartBuilderState;
+  selectedLabel?: string | null;
+  onPointSelect?: (label: string) => void;
 }
 
-export function ChartPreview({ rows, state }: ChartPreviewProps) {
+export function ChartPreview({
+  rows,
+  state,
+  selectedLabel = null,
+  onPointSelect,
+}: ChartPreviewProps) {
   const { t } = useI18n();
   const chartRef = useRef<HTMLDivElement | null>(null);
   const points = useMemo(() => aggregateRows(rows, state), [rows, state]);
@@ -46,18 +53,29 @@ export function ChartPreview({ rows, state }: ChartPreviewProps) {
 
     const chart = init(chartRef.current);
     chart.setOption(createChartOption(points, state, t));
+    const handlePointClick = (event: { name?: string }) => {
+      if (event.name) onPointSelect?.(event.name);
+    };
+    chart.on("click", handlePointClick);
 
     const resize = () => chart.resize();
     window.addEventListener("resize", resize);
 
     return () => {
       window.removeEventListener("resize", resize);
+      chart.off?.("click", handlePointClick);
       chart.dispose();
     };
-  }, [points, state, t]);
+  }, [onPointSelect, points, state, t]);
 
   if (state.chartType === "table") {
-    return <ChartDataTable points={points} />;
+    return (
+      <ChartDataTable
+        onPointSelect={onPointSelect}
+        points={points}
+        selectedLabel={selectedLabel}
+      />
+    );
   }
 
   if (points.length === 0) {
@@ -136,7 +154,15 @@ function createChartOption(
   };
 }
 
-function ChartDataTable({ points }: { points: AggregatedPoint[] }) {
+function ChartDataTable({
+  points,
+  selectedLabel,
+  onPointSelect,
+}: {
+  points: AggregatedPoint[];
+  selectedLabel: string | null;
+  onPointSelect?: (label: string) => void;
+}) {
   const { t } = useI18n();
   return (
     <div className="max-h-80 overflow-auto rounded-md border border-line bg-white">
@@ -153,7 +179,16 @@ function ChartDataTable({ points }: { points: AggregatedPoint[] }) {
         </thead>
         <tbody>
           {points.map((point) => (
-            <tr key={point.label} className="hover:bg-slate-50">
+            <tr
+              key={point.label}
+              aria-current={selectedLabel === point.label ? "true" : undefined}
+              className={
+                selectedLabel === point.label
+                  ? "cursor-pointer bg-violet-50"
+                  : "cursor-pointer hover:bg-slate-50"
+              }
+              onClick={() => onPointSelect?.(point.label)}
+            >
               <td className="border-b border-line px-4 py-3 text-ink">
                 {point.label}
               </td>

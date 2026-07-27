@@ -62,4 +62,24 @@ class DashboardDefinition(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    configuration_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     layout: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
+class ReportExport(TimestampMixin, Base):
+    __tablename__ = "report_exports"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboard_definitions.id"), nullable=False, index=True
+    )
+    created_by_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+    export_format: Mapped[str] = mapped_column(String(16), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(180), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    source_snapshot: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)

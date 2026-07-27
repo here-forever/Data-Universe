@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -270,7 +270,7 @@ describe("DataViewSourcePage", () => {
       0,
     );
     await user.selectOptions(screen.getByLabelText("Layout mode"), "report");
-    await user.click(screen.getByRole("button", { name: "Save layout" }));
+    await user.click(screen.getByRole("button", { name: "Save report" }));
     expect(
       await screen.findByText("Saved prj_demo Report"),
     ).toBeInTheDocument();
@@ -417,12 +417,179 @@ describe("DataViewSourcePage", () => {
       ),
     ).not.toBeNull();
   });
+
+  test("reopens a report, persists interactions, and exports PDF", async () => {
+    const createObjectUrl = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:report-export");
+    const revokeObjectUrl = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => undefined);
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    let updateBody = "";
+
+    fetchMock.mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/data-views?")) {
+          return Promise.resolve(
+            jsonResponse({ items: [dataViewFixture("view_1", "Orders View")] }),
+          );
+        }
+        if (url.includes("/data-views/view_1/preview")) {
+          return Promise.resolve(
+            jsonResponse({
+              data_view: dataViewFixture("view_1", "Orders View"),
+              page: 1,
+              page_size: 20,
+              total_rows: 2,
+              rows: [
+                { _das_row_id: 1, customer: "Ada", amount: 19.5 },
+                { _das_row_id: 2, customer: "Lin", amount: 42 },
+              ],
+            }),
+          );
+        }
+        if (url.includes("/charts?")) {
+          return Promise.resolve(
+            jsonResponse({
+              items: [
+                {
+                  id: "chart_1",
+                  project_id: "prj_demo",
+                  data_view_id: "view_1",
+                  name: "Orders Chart",
+                  chart_type: "table",
+                  config: {
+                    dimension: "customer",
+                    metric: "amount",
+                    aggregation: "sum",
+                    preview_rows: [
+                      { customer: "Ada", amount: 19.5 },
+                      { customer: "Lin", amount: 42 },
+                    ],
+                  },
+                },
+              ],
+            }),
+          );
+        }
+        if (url.includes("/dashboards?") && init?.method === "GET") {
+          return Promise.resolve(
+            jsonResponse({
+              items: [
+                {
+                  id: "dash_1",
+                  project_id: "prj_demo",
+                  name: "Orders Delivery Report",
+                  configuration_version: 3,
+                  created_at: "2026-07-27T10:00:00Z",
+                  updated_at: "2026-07-27T10:30:00Z",
+                  layout: {
+                    schema_version: 1,
+                    mode: "report",
+                    theme: "warm",
+                    items: [{ chart_id: "chart_1", x: 0, y: 0, w: 12, h: 6 }],
+                    global_filters: [
+                      {
+                        id: "filter_customer",
+                        field: "customer",
+                        operator: "eq",
+                        value: "Ada",
+                        data_view_id: "view_1",
+                      },
+                    ],
+                    active_selections: [],
+                  },
+                },
+              ],
+            }),
+          );
+        }
+        if (url.endsWith("/dashboards/dash_1") && init?.method === "PATCH") {
+          updateBody = String(init.body);
+          const payload = JSON.parse(updateBody) as {
+            name: string;
+            layout: Record<string, unknown>;
+          };
+          return Promise.resolve(
+            jsonResponse({
+              id: "dash_1",
+              project_id: "prj_demo",
+              name: payload.name,
+              configuration_version: 4,
+              created_at: "2026-07-27T10:00:00Z",
+              updated_at: "2026-07-27T11:00:00Z",
+              layout: payload.layout,
+            }),
+          );
+        }
+        if (
+          url.includes("/dashboards/dash_1/exports?format=pdf") &&
+          init?.method === "POST"
+        ) {
+          return Promise.resolve(blobResponse("orders_report.pdf"));
+        }
+        if (url.endsWith("/dashboards/dash_1/exports")) {
+          return Promise.resolve(jsonResponse({ items: [] }));
+        }
+        return Promise.resolve(jsonResponse({}));
+      },
+    );
+    const user = userEvent.setup();
+
+    renderWithProviders(<DataViewSourcePage mode="dashboards" />, {
+      route: "/dashboards?project_id=prj_demo&dashboard_id=dash_1",
+    });
+
+    expect(
+      await screen.findByDisplayValue("Orders Delivery Report"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Layout mode")).toHaveValue("report");
+    expect(screen.getByLabelText("Report theme")).toHaveValue("warm");
+    expect(screen.getByLabelText("Filter value")).toHaveValue("Ada");
+
+    const chartSection = screen
+      .getByRole("heading", { name: "Orders Chart" })
+      .closest("section");
+    expect(chartSection).not.toBeNull();
+    expect(chartSection?.parentElement).toHaveClass("report-preview-warm");
+    expect(chartSection?.parentElement).not.toHaveClass(
+      "report-preview-aurora",
+    );
+    await user.click(within(chartSection as HTMLElement).getByText("Ada"));
+    expect(await screen.findByText(/customer: Ada/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save new version" }));
+    await waitFor(() => expect(updateBody).toContain('"expected_version":3'));
+    expect(updateBody).toContain('"active_selections"');
+    expect(updateBody).toContain('"value":"Ada"');
+
+    await user.click(screen.getByRole("button", { name: "PDF" }));
+    await waitFor(() => {
+      expect(createObjectUrl).toHaveBeenCalled();
+      expect(anchorClick).toHaveBeenCalled();
+      expect(revokeObjectUrl).toHaveBeenCalled();
+    });
+  });
 });
 
 function jsonResponse(payload: unknown): Response {
   return {
     ok: true,
     json: async () => payload,
+  } as Response;
+}
+
+function blobResponse(fileName: string): Response {
+  return {
+    blob: async () => new Blob(["report"]),
+    headers: new Headers({
+      "Content-Disposition": `attachment; filename="${fileName}"`,
+    }),
+    ok: true,
   } as Response;
 }
 

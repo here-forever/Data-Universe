@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:6379/0"
     local_storage_root: str = "./storage"
     upload_storage_root: str = "./storage/uploads"
+    report_export_storage_root: str = "./storage/exports"
+    report_export_max_rows_per_chart: int = Field(default=10_000, gt=0, le=100_000)
     import_max_file_size_bytes: int = Field(default=256 * 1024 * 1024, gt=0)
     import_max_rows: int = Field(default=2_000_000, gt=0)
     import_parse_timeout_seconds: float = Field(default=120, gt=0)

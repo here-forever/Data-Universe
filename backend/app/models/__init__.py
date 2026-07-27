@@ -8,6 +8,7 @@ from app.models.data_view import (
     DataView,
     DataViewField,
     DataViewTableMap,
+    ReportExport,
 )
 from app.models.dataset import Dataset, DatasetField, DatasetTableMap
 from app.models.imports import FileImportPreview, UploadedFile
@@ -26,6 +27,7 @@ __all__ = [
     "DataViewTableMap",
     "ChartDefinition",
     "DashboardDefinition",
+    "ReportExport",
     "CleaningRecipe",
     "CleaningStep",
     "ExternalDatabaseConnection",

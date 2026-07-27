@@ -38,6 +38,7 @@ def reset_development_services() -> None:
 @pytest.fixture
 def client(tmp_path, monkeypatch) -> Generator[TestClient]:
     monkeypatch.setenv("UPLOAD_STORAGE_ROOT", str(tmp_path / "uploads"))
+    monkeypatch.setenv("REPORT_EXPORT_STORAGE_ROOT", str(tmp_path / "exports"))
     get_settings.cache_clear()
     import_models()
     engine = create_engine(

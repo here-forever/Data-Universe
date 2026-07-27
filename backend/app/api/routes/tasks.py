@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.service import User
 from app.cleaning.repository import CleaningRepository
 from app.cleaning.service import CleaningService
+from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.data_sources.repository import DataSourceRepository
 from app.data_sources.service import DataSourceService
@@ -25,6 +26,7 @@ from app.tasks.schemas import TaskListResponse, TaskRetryResponse
 from app.tasks.service import TaskService, to_task_response
 from app.visualizations.repository import VisualizationRepository
 from app.visualizations.service import VisualizationService
+from app.visualizations.storage import ReportExportStorage
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -40,6 +42,7 @@ def get_task_retry_executor(
     session: Annotated[Session, Depends(get_db_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> TaskRetryExecutor:
+    settings = get_settings()
     audit = AuditService(AuditRepository(session), actor_id=current_user.id)
     tasks = TaskService(TaskRepository(session), initiator_id=current_user.id)
     imports = ImportService(
@@ -73,6 +76,9 @@ def get_task_retry_executor(
         data_views=data_views,
         audit=audit,
         tasks=None,
+        report_export_storage=ReportExportStorage(settings.report_export_storage_root),
+        created_by_id=current_user.id,
+        max_export_rows_per_chart=settings.report_export_max_rows_per_chart,
     )
     return TaskRetryExecutor(
         tasks=tasks,

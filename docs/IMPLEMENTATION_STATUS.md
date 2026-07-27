@@ -19,7 +19,7 @@ Current implementation has moved beyond pure planning. The repository now has ba
 
 The active product scope is now local-file-first. CSV/Excel intake is the only data-source workflow shown in the frontend; existing external database backend foundations are retained but paused from current product development.
 
-The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests. Phase 2 reliable large local imports is delivered; the next active milestone is reusable analysis assets.
+The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests. Phases 1 through 4 are delivered: local intake, reliable large imports, reusable analysis assets, and versioned report/export delivery now form a traceable end-to-end workflow. The next active milestone is governance and release hardening.
 
 ## Implemented Documentation
 
@@ -69,11 +69,15 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - Data view creation, list, and paged preview APIs.
 - Chart definition creation/list APIs backed by data views.
 - Dashboard/report layout creation/list APIs backed by chart resources.
+- Versioned dashboard/report configuration read/update APIs with legacy-layout normalization and optimistic concurrency control.
+- Durable dashboard exports in CSV, XLSX, and printable PDF formats, including export history and artifact download APIs.
+- Report export source snapshots, task records, operation logs, and lineage edges from dashboards to generated artifacts.
 - Task center API for project-scoped workflow task status visibility.
 - Persisted parsing and dataset-materialization progress checkpoints with the last completed checkpoint retained on failure.
 - Task failure records for import parsing, dataset materialization, cleaning execution, SQL execution/materialization, and chart/dashboard save actions.
 - Task retry API with persisted retry metadata and in-process synchronous replay for selected safe operations.
 - Retryable task execution currently covers dataset materialization, external table import, external SQL import, cleaning recipe execution, SQL data view materialization, chart save, and dashboard/report save.
+- Report export failures retain retry metadata and can be replayed through the task retry workflow.
 - External PostgreSQL/MySQL connection metadata APIs.
 - Project-scoped external database connection list API.
 - External database connection creation with first-stage read-only policy enforcement.
@@ -114,6 +118,8 @@ Initial core tables have been modeled and migrated:
 - `lineage_edges`
 - `external_database_connections`
 - `analysis_definitions`
+- `dashboard_definitions`
+- `report_exports`
 
 ## Implemented Frontend Foundation
 
@@ -135,6 +141,9 @@ Initial core tables have been modeled and migrated:
 - SQL workspace page for project-scoped query execution and data view saving.
 - Chart configuration page with real Data View fields and ECharts rendering.
 - Dashboard/report source page with dashboard, free-layout report, and data-screen modes.
+- Report workbench with persisted chart ordering and sizing, global filters, active chart selections, chart cross-filtering, and Aurora/Warm/Focus themes.
+- Version-aware report updates with conflict feedback and backward-compatible recovery of earlier dashboard layouts.
+- CSV/XLSX/PDF export actions plus durable export history and artifact re-download.
 - Task center page with project filtering, status summary, workflow coverage, and recent task table.
 - Task center retry entry controlled by backend retry eligibility, with immediate list refresh and completion feedback.
 - Task center related-resource links for datasets, data views, charts, and dashboards, with target pages reading route query parameters for selection/highlighting.
@@ -163,14 +172,16 @@ Initial core tables have been modeled and migrated:
 - Backend health check is reachable at `http://127.0.0.1:8000/api/health`.
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
-- Backend test suite passed locally: 75 tests.
-- Frontend test suite passed: 35 tests.
+- Backend test suite passed locally: 76 tests.
+- Frontend test suite passed: 38 tests.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
 - Demo seed has been executed successfully through Docker Compose.
 - Frontend demo pages were checked through a headless Edge/Playwright pass against the running Docker stack: home, datasets, charts, dashboards, and tasks loaded expected demo content, and the chart page rendered an ECharts canvas.
 - The local Data Sources page was re-verified in the in-app browser at the default desktop viewport and at a 390 × 844 mobile viewport: file selection state, clear/reset behavior, upload-history search feedback, responsive workflow ordering, page width, and console health all passed.
 - Phase 3 was verified in the in-app browser against Docker PostgreSQL: save, route-based reopen, rerun, data-view materialization, chart/dashboard promotion, desktop rendering, mobile width containment, and console health all passed.
+- Phase 4 was verified in the in-app browser at desktop and 390 x 844 mobile widths: saved report recovery, layout editing, themes, global filtering, active chart selections, cross-filtering, export history refresh, responsive containment, and console health all passed.
+- Phase 4 CSV, XLSX, and PDF artifacts were generated from the seeded workflow and inspected: CSV aggregates were correct, the XLSX workbook contained five readable worksheets, and the two-page A4 PDF rendered successfully.
 
 ## Current Limitations
 
@@ -201,6 +212,8 @@ Initial core tables have been modeled and migrated:
 - Scheduled sync and distributed worker execution are not implemented yet.
 - The interactive analysis service currently accepts datasets up to 250,000 rows per request and runs in the application process; larger workloads should move behind the task boundary in a later milestone.
 - Saved analysis definitions are immutable create/read assets in the current phase; rename, configuration revision, archive, and restore workflows remain future governance work.
+- Report exports execute synchronously inside the API request while also recording task state; a future worker boundary is still needed for genuinely long-running exports.
+- Report exports are bounded by the configured per-chart row limit so very large report jobs cannot exhaust the application process.
 
 ## Updated Engineering Constraints
 
@@ -216,6 +229,6 @@ Future work must preserve these boundaries:
 
 ## Recommended Next Build Step
 
-The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phases 1 through 3 are delivered: local intake, reliable guarded imports, and reusable analysis assets now form a traceable local analysis workflow.
+The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phases 1 through 4 are delivered: local intake, reliable guarded imports, reusable analysis assets, and report/export delivery now form a traceable local analysis workflow.
 
-The next implementation step is Phase 4: persist dashboard filters and selections, complete reusable report/data-screen layout editing, unify CSV/Excel/printable exports, and expose longer export work through the task center.
+The next implementation step is Phase 5: harden authentication and collaboration, add archive/restore and dependency visibility, expand full-workflow integration coverage, and finalize deployment, backup, upgrade, and recovery guidance.

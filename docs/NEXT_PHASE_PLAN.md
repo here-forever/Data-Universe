@@ -92,7 +92,7 @@ Delivered implementation:
 - Materialized views retain `analysis_definition` source references and feed the existing chart and dashboard/report builders through stable route parameters.
 - Dataset-to-analysis and analysis-to-data-view lineage, operation logs, and materialization task records preserve traceability.
 
-### Phase 4: Report and Export Delivery — Next
+### Phase 4: Report and Export Delivery — Delivered
 
 Scope:
 
@@ -106,7 +106,16 @@ Acceptance:
 - Saved dashboards reopen with layout, filters, and chart configuration intact.
 - Exported artifacts identify their source resource and create audit/task records.
 
-### Phase 5: Governance and Release Hardening
+Delivered implementation:
+
+- Dashboard configurations now use a versioned layout contract with legacy-layout normalization and optimistic concurrency control for safe updates.
+- Dashboard, free-layout report, and data-screen modes persist chart order, width, height, global filters, active chart selections, and one of three report themes.
+- The report workbench supports compact layout editing, visible active-filter feedback, chart-to-chart filtering, saved configuration recovery, and responsive desktop/mobile operation.
+- CSV exports contain chart-level aggregated detail, XLSX exports include source metadata plus one worksheet per chart, and printable PDF exports retain report identity and source references.
+- Export files are stored durably and can be listed and downloaded from report history; every export records a source snapshot, task state, operation log, and lineage edge.
+- Failed report exports retain retry metadata and can be replayed through the existing task-center retry entry.
+
+### Phase 5: Governance and Release Hardening — Next
 
 Scope:
 
