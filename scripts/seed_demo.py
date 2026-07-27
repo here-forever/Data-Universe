@@ -75,6 +75,7 @@ DEMO_URLS = {
     "charts": f"http://127.0.0.1:5173/charts?project_id={PROJECT_ID}",
     "dashboards": f"http://127.0.0.1:5173/dashboards?project_id={PROJECT_ID}",
     "tasks": f"http://127.0.0.1:5173/tasks?project_id={PROJECT_ID}",
+    "governance": f"http://127.0.0.1:5173/governance?project_id={PROJECT_ID}",
 }
 
 

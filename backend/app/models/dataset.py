@@ -2,10 +2,10 @@ from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstra
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.mixins import TimestampMixin
+from app.models.mixins import ArchivableMixin, TimestampMixin
 
 
-class Dataset(TimestampMixin, Base):
+class Dataset(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "datasets"
     __table_args__ = (UniqueConstraint("project_id", "name", name="uq_datasets_project_name"),)
 

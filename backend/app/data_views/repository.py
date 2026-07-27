@@ -38,14 +38,25 @@ class DataViewRepository:
             self.session.rollback()
             raise
 
-    def get_data_view(self, data_view_id: str) -> DataViewModel | None:
-        return self.session.get(DataViewModel, data_view_id)
+    def get_data_view(
+        self,
+        data_view_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> DataViewModel | None:
+        statement = select(DataViewModel).where(DataViewModel.id == data_view_id)
+        if not include_archived:
+            statement = statement.where(DataViewModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def list_data_views(self, project_id: str) -> list[DataViewModel]:
         return list(
             self.session.scalars(
                 select(DataViewModel)
-                .where(DataViewModel.project_id == project_id)
+                .where(
+                    DataViewModel.project_id == project_id,
+                    DataViewModel.archived_at.is_(None),
+                )
                 .order_by(DataViewModel.created_at.desc())
             )
         )

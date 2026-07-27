@@ -36,9 +36,13 @@ services:
       context: .
       dockerfile: docker/backend.Dockerfile
     environment:
-      APP_ENV: development
-      APP_DEBUG: "true"
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: ${APP_DEBUG:-true}
       APP_SECRET_KEY: ${APP_SECRET_KEY:-local-development-only-secret}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      PASSWORD_HASH_SCHEME: ${PASSWORD_HASH_SCHEME:-pbkdf2_sha256}
+      PASSWORD_HASH_ITERATIONS: ${PASSWORD_HASH_ITERATIONS:-120000}
       EXTERNAL_CONNECTION_ENCRYPTION_KEY: ${EXTERNAL_CONNECTION_ENCRYPTION_KEY:-local-development-only-credential-key}
       BACKEND_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-data_analysis_user}:${POSTGRES_PASSWORD:-data_analysis_password}@postgres:5432/${POSTGRES_DB:-data_analysis_system}

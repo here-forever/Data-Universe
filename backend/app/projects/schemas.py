@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 ProjectRole = Literal["owner", "editor", "viewer"]
+ManagedProjectRole = Literal["editor", "viewer"]
 
 
 class ProjectCreateRequest(BaseModel):
@@ -20,7 +21,11 @@ class ProjectResponse(BaseModel):
 
 class ProjectMemberCreateRequest(BaseModel):
     email: EmailStr
-    role: ProjectRole
+    role: ManagedProjectRole
+
+
+class ProjectMemberUpdateRequest(BaseModel):
+    role: ManagedProjectRole
 
 
 class ProjectMemberResponse(BaseModel):
@@ -30,3 +35,8 @@ class ProjectMemberResponse(BaseModel):
     email: EmailStr
     display_name: str
     role: ProjectRole
+
+
+class ProjectMemberRemoveResponse(BaseModel):
+    user_id: str
+    removed: bool

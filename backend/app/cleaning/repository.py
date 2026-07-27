@@ -42,14 +42,25 @@ class CleaningRepository:
             self.session.rollback()
             raise
 
-    def get_recipe(self, recipe_id: str) -> CleaningRecipeModel | None:
-        return self.session.get(CleaningRecipeModel, recipe_id)
+    def get_recipe(
+        self,
+        recipe_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> CleaningRecipeModel | None:
+        statement = select(CleaningRecipeModel).where(CleaningRecipeModel.id == recipe_id)
+        if not include_archived:
+            statement = statement.where(CleaningRecipeModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def list_recipes(self, project_id: str) -> list[CleaningRecipeModel]:
         return list(
             self.session.scalars(
                 select(CleaningRecipeModel)
-                .where(CleaningRecipeModel.project_id == project_id)
+                .where(
+                    CleaningRecipeModel.project_id == project_id,
+                    CleaningRecipeModel.archived_at.is_(None),
+                )
                 .order_by(CleaningRecipeModel.created_at.desc())
             )
         )

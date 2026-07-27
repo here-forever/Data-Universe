@@ -53,6 +53,7 @@ storage/
 uploads/
 tmp/
 temp/
+backups/
 *.sqlite
 *.sqlite3
 

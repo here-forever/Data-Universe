@@ -178,12 +178,21 @@ def test_sql_workspace_saves_query_result_as_data_view(client: TestClient) -> No
         saved_log = session.scalar(
             select(OperationLogModel).where(OperationLogModel.action == "sql.data_view_saved")
         )
+        dataset_lineage = session.scalar(
+            select(LineageEdgeModel).where(
+                LineageEdgeModel.target_id == data_view["id"],
+                LineageEdgeModel.source_type == "dataset",
+            )
+        )
     finally:
         session.close()
 
     assert saved_log is not None
     assert saved_log.resource_id == data_view["id"]
     assert saved_log.detail["row_count"] == 1
+    assert dataset_lineage is not None
+    assert dataset_lineage.source_id == dataset["id"]
+    assert dataset_lineage.transform_type == "sql_query_materialization"
 
 
 def test_sql_data_view_lineage_uses_stable_short_reference_for_long_sql(

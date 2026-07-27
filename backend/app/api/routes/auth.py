@@ -15,7 +15,10 @@ def login(
     auth: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokenResponse:
     token = auth.authenticate(payload.email, payload.password)
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        expires_in=auth.settings.access_token_expire_minutes * 60,
+    )
 
 
 @router.get("/me", response_model=CurrentUserResponse)

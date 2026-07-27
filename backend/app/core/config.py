@@ -33,7 +33,9 @@ class Settings(BaseSettings):
     import_materialization_batch_size: int = Field(default=1_000, gt=0)
     import_storage_chunk_size_bytes: int = Field(default=1024 * 1024, gt=0)
     access_token_expire_minutes: int = 1440
-    password_hash_scheme: str = "bcrypt"
+    password_hash_scheme: str = "pbkdf2_sha256"
+    password_hash_iterations: int = Field(default=120_000, ge=50_000)
+    default_admin_password: str = "admin123"
     external_connection_encryption_key: str | None = None
 
     model_config = SettingsConfigDict(

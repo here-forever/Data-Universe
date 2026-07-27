@@ -112,6 +112,11 @@ class SqlWorkspaceService:
                     rows=rows,
                 )
             )
+            self._record_sql_dataset_lineage(
+                project_id=payload.project_id,
+                sql=payload.sql,
+                data_view_id=data_view.id,
+            )
             self._record_sql_save_audit(
                 project_id=payload.project_id,
                 sql=payload.sql,
@@ -209,6 +214,28 @@ class SqlWorkspaceService:
             },
         )
 
+    def _record_sql_dataset_lineage(
+        self,
+        *,
+        project_id: str,
+        sql: str,
+        data_view_id: str,
+    ) -> None:
+        if self.audit is None:
+            return
+
+        project_dataset_ids = {dataset.id for dataset in self.datasets.list_datasets(project_id)}
+        for dataset_id in referenced_dataset_aliases(sql).intersection(project_dataset_ids):
+            self.audit.record_lineage(
+                project_id=project_id,
+                source_type="dataset",
+                source_id=dataset_id,
+                target_type="data_view",
+                target_id=data_view_id,
+                transform_type="sql_query_materialization",
+                transform_id=data_view_id,
+            )
+
     def _record_sql_save_task(
         self,
         *,
@@ -253,7 +280,7 @@ class SqlWorkspaceService:
 
 def rewrite_dataset_aliases(*, sql: str, dataset_table_names: dict[str, str]) -> str:
     rewritten = sql.rstrip().rstrip(";")
-    referenced_aliases = set(re.findall(r"\b(dataset_[A-Za-z0-9_]+)\b", rewritten))
+    referenced_aliases = referenced_dataset_aliases(rewritten)
     unknown_aliases = referenced_aliases.difference(dataset_table_names.keys())
     if unknown_aliases:
         raise AppError(
@@ -270,6 +297,10 @@ def rewrite_dataset_aliases(*, sql: str, dataset_table_names: dict[str, str]) ->
             rewritten,
         )
     return rewritten
+
+
+def referenced_dataset_aliases(sql: str) -> set[str]:
+    return set(re.findall(r"\b(dataset_[A-Za-z0-9_]+)\b", sql))
 
 
 def infer_data_view_fields(

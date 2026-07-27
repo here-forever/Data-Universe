@@ -51,6 +51,39 @@ describe("apiClient", () => {
     );
   });
 
+  test("resolves the latest bearer token for every request", async () => {
+    let accessToken: string | undefined = undefined;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: "ok" }),
+    });
+    const client = createApiClient({
+      accessToken: () => accessToken,
+      baseUrl: "http://localhost/api",
+      fetcher: fetchMock,
+    });
+
+    await client.get("/auth/me");
+    accessToken = "signed-session";
+    await client.get("/auth/me");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost/api/auth/me",
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost/api/auth/me",
+      expect.objectContaining({
+        headers: {
+          Accept: "application/json",
+          Authorization: "Bearer signed-session",
+        },
+      }),
+    );
+  });
+
   test("appends query parameters to GET requests", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -152,6 +185,27 @@ describe("apiClient", () => {
           "Content-Type": "application/json",
         },
         method: "PATCH",
+      },
+    );
+  });
+
+  test("deletes a JSON resource", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ removed: true }),
+    });
+    const client = createApiClient({
+      baseUrl: "http://localhost/api",
+      fetcher: fetchMock,
+    });
+
+    await client.delete("/projects/prj_1/members/usr_1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost/api/projects/prj_1/members/usr_1",
+      {
+        headers: { Accept: "application/json" },
+        method: "DELETE",
       },
     );
   });

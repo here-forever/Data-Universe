@@ -4,10 +4,10 @@ from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Unique
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.mixins import TimestampMixin
+from app.models.mixins import ArchivableMixin, TimestampMixin
 
 
-class AnalysisDefinition(TimestampMixin, Base):
+class AnalysisDefinition(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "analysis_definitions"
     __table_args__ = (
         UniqueConstraint(

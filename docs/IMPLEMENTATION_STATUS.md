@@ -19,7 +19,7 @@ Current implementation has moved beyond pure planning. The repository now has ba
 
 The active product scope is now local-file-first. CSV/Excel intake is the only data-source workflow shown in the frontend; existing external database backend foundations are retained but paused from current product development.
 
-The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests. Phases 1 through 4 are delivered: local intake, reliable large imports, reusable analysis assets, and versioned report/export delivery now form a traceable end-to-end workflow. The next active milestone is governance and release hardening.
+The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests. Phases 1 through 5 are delivered: local intake, reliable large imports, reusable analysis assets, versioned report/export delivery, and governance/release hardening now form a traceable end-to-end workflow.
 
 ## Implemented Documentation
 
@@ -29,6 +29,7 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - Agent/development instructions: `AGENTS.md`.
 - Docker service notes: `docker/README.md`.
 - Demo walkthrough and seed instructions: `docs/DEMO_GUIDE.md`.
+- Deployment, upgrade, backup, restore, and recovery runbook: `docs/DEPLOYMENT_OPERATIONS.md`.
 
 ## Implemented Backend Foundation
 
@@ -44,9 +45,11 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 
 ## Implemented Backend Product Modules
 
-- Development login flow with a default admin account.
+- PBKDF2 password hashing with transparent upgrade of legacy plaintext credentials after successful authentication.
+- Time-limited Fernet-signed sessions, with fixed development tokens restricted to explicit development mode.
+- Current-user and logout flows for authenticated frontend sessions.
 - Project creation API.
-- Project member API foundation.
+- Project member list, add, role-update, and remove workflows with owner/self-protection and project-role authorization.
 - Resource permission API foundation.
 - CSV and Excel parsing.
 - Bounded-memory CSV row streaming and read-only Excel worksheet iteration.
@@ -93,6 +96,9 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - External import history/detail APIs backed by task records and retry metadata.
 - External database imports are connected to task center, operation logs, basic lineage, dataset preview, and dataset quality profiling.
 - Basic operation log and lineage records for implemented workflow actions.
+- Project-scoped governance APIs for searchable resources, recoverable archive/restore, operation logs, and four-level focused lineage traversal.
+- Recoverable archive state for datasets, data views, analysis definitions, cleaning recipes, charts, and dashboards.
+- SQL data-view lineage from referenced datasets to materialized views, preserving report provenance through the local import path.
 - Dataset analytics API with validated filters, multi-dimension grouped metrics, descriptive statistics, Pearson correlation, and single-feature linear regression.
 - Saved analysis definition APIs for validated, project-scoped configuration persistence, reopening, rerunning, and result materialization.
 - Analysis result materialization into physical data views for aggregate, numeric-statistics, categorical-statistics, correlation, and regression outputs, with task, operation-log, and lineage records.
@@ -153,6 +159,9 @@ Initial core tables have been modeled and migrated:
 - Workspace home page now acts as a demo entry screen linking into the main implemented workflow surfaces.
 - Analysis workbench for dataset selection, global filtering, metric aggregation, dimension breakdown, descriptive statistics, correlation matrix, linear regression visualization, and CSV/Excel export.
 - Reusable analysis toolbar for saving, route-based reopening, rerunning, and materializing active results, with direct promotion into chart and dashboard/report builders.
+- Authentication gate, dedicated login page, signed-session API access, real current-user display, and logout handling.
+- Governance center with resource vault, archive/restore confirmations, focused dependency view, searchable operation trail, and owner-facing member administration.
+- Mobile app-shell navigation uses a compact, horizontally scrollable bottom rail below 560px so work surfaces retain full viewport width.
 - Frontend API client tests.
 
 ## Implemented Docker Foundation
@@ -164,6 +173,8 @@ Initial core tables have been modeled and migrated:
 - Frontend service.
 - Backend and frontend Dockerfiles.
 - `.env.example` for local configuration.
+- Release validation script covering configuration, migration, health, seed, and workflow checks.
+- Compose-aware database plus retained-file backup and restore scripts with a manifest and explicit recovery steps.
 
 ## Verified So Far
 
@@ -172,8 +183,8 @@ Initial core tables have been modeled and migrated:
 - Backend health check is reachable at `http://127.0.0.1:8000/api/health`.
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
-- Backend test suite passed locally: 76 tests.
-- Frontend test suite passed: 38 tests.
+- Backend test suite passed in the Compose backend: 79 tests.
+- Frontend test suite passed: 43 tests across 15 files.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
 - Demo seed has been executed successfully through Docker Compose.
@@ -182,6 +193,8 @@ Initial core tables have been modeled and migrated:
 - Phase 3 was verified in the in-app browser against Docker PostgreSQL: save, route-based reopen, rerun, data-view materialization, chart/dashboard promotion, desktop rendering, mobile width containment, and console health all passed.
 - Phase 4 was verified in the in-app browser at desktop and 390 x 844 mobile widths: saved report recovery, layout editing, themes, global filtering, active chart selections, cross-filtering, export history refresh, responsive containment, and console health all passed.
 - Phase 4 CSV, XLSX, and PDF artifacts were generated from the seeded workflow and inspected: CSV aggregates were correct, the XLSX workbook contained five readable worksheets, and the two-page A4 PDF rendered successfully.
+- Phase 5 governance was verified in the in-app browser at desktop and 390 x 844 mobile widths: archive confirmation, restoration, four-level source lineage, archive/restore operation records, member administration, responsive containment, bottom navigation, and console health all passed.
+- A combined Phase 5 backup was generated and restored into an isolated PostgreSQL database; the restored project count was `1` and the migration head was `20260727_0010` before the temporary recovery database was removed.
 
 ## Current Limitations
 
@@ -197,11 +210,11 @@ Initial core tables have been modeled and migrated:
 - Local-file formal datasets are populated in configurable batches inside one rollback boundary; source row-count changes abort the dataset rather than committing inconsistent metadata.
 - Dataset names are unique within a project to avoid accidental overwrite-like workflows.
 - Dataset quality profiling is computed on demand from materialized rows and is not yet cached or task-backed.
-- Operation logs and lineage records exist for the implemented workflow actions, but the lineage graph UI is not implemented yet.
+- Operation logs and lineage records are exposed through a focused four-level governance view; a full free-form lineage graph remains a later-stage capability.
 - Task center records synchronous workflow actions as completed or failed/retryable tasks.
 - Retry execution is synchronous inside the API request for selected safe operations; it is not yet backed by Redis/Celery/RQ or a distributed worker.
 - File preview parse failures are recorded against staged uploaded files; user-correctable validation failures remain non-retryable, while unexpected parse failures can keep retry metadata.
-- Authentication is still development-oriented and not production JWT/auth hardening.
+- Authentication now uses password hashing and time-limited signed sessions, but SSO, MFA, password-reset delivery, session revocation lists, and enterprise identity integration remain future work.
 - External database imports currently preview and materialize bounded snapshots through row limits; scheduled sync, incremental sync, and streaming/large-table import are not implemented yet.
 - External table/SQL import retry is synchronous inside the API request and replays the read/import operation, but it is not yet backed by a distributed worker.
 - External connection passwords use application-level encrypted storage, but production deployments still need protected key distribution, backup, and rotation procedures or a managed secret store.
@@ -211,7 +224,8 @@ Initial core tables have been modeled and migrated:
 - API data sources are still reserved for later milestones.
 - Scheduled sync and distributed worker execution are not implemented yet.
 - The interactive analysis service currently accepts datasets up to 250,000 rows per request and runs in the application process; larger workloads should move behind the task boundary in a later milestone.
-- Saved analysis definitions are immutable create/read assets in the current phase; rename, configuration revision, archive, and restore workflows remain future governance work.
+- Saved analysis definitions remain immutable create/read assets for configuration changes, but they now support recoverable archive and restore through governance.
+- Recoverable archive currently covers six core analytical resource types; source-file retention and formal dataset tables remain intentionally protected from silent hard deletion.
 - Report exports execute synchronously inside the API request while also recording task state; a future worker boundary is still needed for genuinely long-running exports.
 - Report exports are bounded by the configured per-chart row limit so very large report jobs cannot exhaust the application process.
 
@@ -229,6 +243,6 @@ Future work must preserve these boundaries:
 
 ## Recommended Next Build Step
 
-The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phases 1 through 4 are delivered: local intake, reliable guarded imports, reusable analysis assets, and report/export delivery now form a traceable local analysis workflow.
+The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phases 1 through 5 are delivered and the first-stage local analysis workflow now includes durable intake, reusable processing, reporting/export, recoverable governance, and release operations.
 
-The next implementation step is Phase 5: harden authentication and collaboration, add archive/restore and dependency visibility, expand full-workflow integration coverage, and finalize deployment, backup, upgrade, and recovery guidance.
+The next roadmap should be approved before implementation. The strongest candidate is reliability at scale: move long imports, analysis, and report exports behind a real worker boundary while preserving the existing task, retry, audit, and lineage contracts.

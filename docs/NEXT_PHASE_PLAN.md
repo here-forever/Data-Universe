@@ -115,7 +115,7 @@ Delivered implementation:
 - Export files are stored durably and can be listed and downloaded from report history; every export records a source snapshot, task state, operation log, and lineage edge.
 - Failed report exports retain retry metadata and can be replayed through the existing task-center retry entry.
 
-### Phase 5: Governance and Release Hardening — Next
+### Phase 5: Governance and Release Hardening — Delivered
 
 Scope:
 
@@ -130,6 +130,16 @@ Acceptance:
 - Important resources are recoverable and destructive actions are explicit.
 - Users can answer where a report came from and which assets depend on a dataset.
 - A clean Docker Compose environment can migrate, seed, validate, back up, and restore the product.
+
+Delivered implementation:
+
+- Passwords use PBKDF2 hashing, legacy plaintext credentials upgrade after a successful login, and signed Fernet sessions replace the earlier static-token flow outside explicit development mode.
+- Project owners can add members, change editor/viewer roles, and remove members while owner and self-protection rules preserve project access.
+- Datasets, data views, analysis definitions, cleaning recipes, charts, and dashboards use recoverable archive/restore workflows with explicit confirmations and operation records.
+- The governance center combines a searchable resource vault, project operation trail, member administration, and a four-level focused dependency view from retained file through reusable analysis assets.
+- SQL-materialized data views now record dataset-to-data-view lineage so dashboard/report provenance can be traced back through the complete local import path.
+- Release validation, Compose backup, and Compose restore scripts are documented for local deployment, migration, seed, validation, backup, isolated restore verification, and recovery.
+- Backend workflow coverage, frontend unit coverage, lint/format checks, production build, desktop browser QA, and 390 x 844 responsive browser QA are part of the delivered milestone.
 
 ## Execution Rules
 

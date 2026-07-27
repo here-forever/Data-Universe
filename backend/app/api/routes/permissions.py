@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user
-from app.auth.service import User
+from app.auth.dependencies import get_auth_service, get_current_user
+from app.auth.service import AuthService, User
 from app.core.database import get_db_session
 from app.permissions.repository import PermissionRepository
 from app.permissions.schemas import (
@@ -12,6 +12,8 @@ from app.permissions.schemas import (
     ResourcePermissionResponse,
 )
 from app.permissions.service import PermissionService, ResourcePermission
+from app.projects.repository import ProjectRepository
+from app.projects.service import ProjectService
 
 router = APIRouter(prefix="/permissions", tags=["permissions"])
 
@@ -20,6 +22,13 @@ def get_permission_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> PermissionService:
     return PermissionService(PermissionRepository(session))
+
+
+def get_project_service(
+    session: Annotated[Session, Depends(get_db_session)],
+    auth: Annotated[AuthService, Depends(get_auth_service)],
+) -> ProjectService:
+    return ProjectService(ProjectRepository(session), auth)
 
 
 def to_permission_response(permission: ResourcePermission) -> ResourcePermissionResponse:
@@ -41,19 +50,23 @@ def to_permission_response(permission: ResourcePermission) -> ResourcePermission
 )
 def create_resource_permission(
     payload: ResourcePermissionCreateRequest,
-    _current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
     permissions: Annotated[PermissionService, Depends(get_permission_service)],
+    projects: Annotated[ProjectService, Depends(get_project_service)],
 ) -> ResourcePermissionResponse:
+    projects.require_role(payload.project_id, current_user, {"owner"})
     permission = permissions.create_from_request(payload)
     return to_permission_response(permission)
 
 
 @router.get("/resources", response_model=list[ResourcePermissionResponse])
 def list_resource_permissions(
-    _current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
     permissions: Annotated[PermissionService, Depends(get_permission_service)],
+    projects: Annotated[ProjectService, Depends(get_project_service)],
     project_id: str = Query(),
 ) -> list[ResourcePermissionResponse]:
+    projects.require_role(project_id, current_user, {"owner", "editor", "viewer"})
     return [
         to_permission_response(permission)
         for permission in permissions.list_resource_permissions(project_id)

@@ -2,10 +2,10 @@ from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.mixins import TimestampMixin
+from app.models.mixins import ArchivableMixin, TimestampMixin
 
 
-class DataView(TimestampMixin, Base):
+class DataView(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "data_views"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -43,7 +43,7 @@ class DataViewTableMap(TimestampMixin, Base):
     physical_table_name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
 
 
-class ChartDefinition(TimestampMixin, Base):
+class ChartDefinition(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "chart_definitions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -56,7 +56,7 @@ class ChartDefinition(TimestampMixin, Base):
     config: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
 
 
-class DashboardDefinition(TimestampMixin, Base):
+class DashboardDefinition(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "dashboard_definitions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

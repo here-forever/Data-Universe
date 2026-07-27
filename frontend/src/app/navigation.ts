@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListChecks,
   ScrollText,
+  ShieldCheck,
   SquareTerminal,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -62,5 +63,10 @@ export const navigationItems: NavigationItem[] = [
     label: { zh: "任务中心", en: "Task center" },
     path: "/tasks",
     icon: ScrollText,
+  },
+  {
+    label: { zh: "治理中心", en: "Governance" },
+    path: "/governance",
+    icon: ShieldCheck,
   },
 ];

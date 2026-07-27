@@ -26,7 +26,8 @@ Implemented product surfaces include:
 - Project-scoped read-only SQL with reusable Data View materialization.
 - ECharts chart configuration plus dashboard, free-report, and data-screen layout modes.
 - Task Center with status, errors, related-resource links, and synchronous retry for supported operations.
-- Basic project collaboration, resource permissions, operation logs, and data lineage.
+- Governance Center with recoverable archive/restore for core resources, focused upstream/downstream dependencies, operation-log search, and project-member role management.
+- Expiring signed sessions, salted password hashing with legacy credential upgrade, development-token isolation, and owner-controlled collaboration workflows.
 
 Detailed status and known limitations are tracked in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). The active delivery sequence and acceptance criteria live in [`docs/NEXT_PHASE_PLAN.md`](docs/NEXT_PHASE_PLAN.md).
 
@@ -47,6 +48,7 @@ Prerequisites: Docker Desktop with Docker Compose.
 docker compose up -d --build
 docker compose exec backend python -m alembic upgrade head
 docker compose exec backend python /demo/scripts/seed_demo.py
+docker compose exec backend python /demo/scripts/validate_release.py --project-id prj_demo
 ```
 
 Open `http://127.0.0.1:5173` and use the seeded project `prj_demo`.
@@ -76,7 +78,7 @@ GitHub Actions runs the equivalent backend and frontend checks for pushes and pu
 
 The tracked demo data is synthetic. Runtime uploads, local storage, `.env` files, credentials, database files, and private key formats are ignored by Git.
 
-External database passwords are encrypted at rest with the configured `EXTERNAL_CONNECTION_ENCRYPTION_KEY`, and legacy development records are upgraded after a successful connection test. Authentication and key management remain development-oriented, so do not expose this MVP directly to the public internet. Review [`SECURITY.md`](SECURITY.md) before deployment or connector testing with non-demo systems.
+External database passwords are encrypted at rest with the configured `EXTERNAL_CONNECTION_ENCRYPTION_KEY`. User passwords use salted PBKDF2 hashes, legacy local passwords upgrade after successful authentication, and issued sessions are signed and time-limited. Internet-facing deployments still require TLS, rate limiting, password recovery, MFA or equivalent policy, and managed secret distribution. Review [`SECURITY.md`](SECURITY.md) and [`docs/DEPLOYMENT_OPERATIONS.md`](docs/DEPLOYMENT_OPERATIONS.md) before non-local use.
 
 ## Project Direction
 

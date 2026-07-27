@@ -46,6 +46,8 @@ export async function runSql(payload: SqlRunPayload): Promise<SqlRunResult> {
   return apiClient.post<SqlRunResult>("/sql/run", payload);
 }
 
-export async function saveSqlDataView(payload: SqlSaveDataViewPayload): Promise<DataView> {
+export async function saveSqlDataView(
+  payload: SqlSaveDataViewPayload,
+): Promise<DataView> {
   return apiClient.post<DataView>("/sql/save-data-view", payload);
 }

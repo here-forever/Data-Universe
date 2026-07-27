@@ -49,6 +49,10 @@ describe("AppShell", () => {
       screen.getByRole("link", { name: "分析工作台" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "任务中心" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "治理中心" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "退出登录" }),
+    ).toBeInTheDocument();
   });
 
   test("collapses the navigation while keeping links accessible", async () => {

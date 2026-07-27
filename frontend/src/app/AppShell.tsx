@@ -1,21 +1,28 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronLeft,
   ChevronRight,
   Cloud,
   Languages,
+  LogOut,
   Search,
   Sparkles,
 } from "lucide-react";
 import { useEffect } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { useCurrentUser } from "../features/auth/useCurrentUser";
+import { logout } from "../features/auth/api";
 import { useWorkspaceStore } from "../features/workspace/workspaceStore";
 import { localize, useI18n } from "../i18n";
 import { navigationItems } from "./navigation";
 
 export function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const currentUser = useCurrentUser();
   const { language, setLanguage, t } = useI18n();
   const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useWorkspaceStore((state) => state.toggleSidebar);
@@ -29,6 +36,12 @@ export function AppShell() {
   useEffect(() => {
     document.title = t("雾流数据台", "Mistflow Data Atelier");
   }, [t]);
+
+  function handleLogout() {
+    logout();
+    queryClient.removeQueries({ queryKey: ["auth"] });
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className={sidebarCollapsed ? "fluid-app is-collapsed" : "fluid-app"}>
@@ -142,11 +155,25 @@ export function AppShell() {
             >
               <Bell size={18} />
             </button>
+            <button
+              className="icon-button"
+              aria-label={t("退出登录", "Sign out")}
+              onClick={handleLogout}
+              type="button"
+            >
+              <LogOut size={18} />
+            </button>
             <div className="user-chip">
-              <div className="avatar">林</div>
+              <div className="avatar">
+                {currentUser?.display_name.slice(0, 1).toUpperCase() ?? "林"}
+              </div>
               <div>
-                <strong>林予安</strong>
-                <span>{t("分析负责人", "Analytics lead")}</span>
+                <strong>{currentUser?.display_name ?? "林予安"}</strong>
+                <span>
+                  {currentUser?.is_platform_admin
+                    ? t("平台管理员", "Platform administrator")
+                    : t("分析负责人", "Analytics lead")}
+                </span>
               </div>
             </div>
           </div>

@@ -61,11 +61,12 @@ http://127.0.0.1:5173/sql?project_id=prj_demo
 http://127.0.0.1:5173/charts?project_id=prj_demo
 http://127.0.0.1:5173/dashboards?project_id=prj_demo
 http://127.0.0.1:5173/tasks?project_id=prj_demo
+http://127.0.0.1:5173/governance?project_id=prj_demo
 ```
 
 ## Login And Auth Notes
 
-The current frontend development setup sends:
+The local frontend can use the development-only compatibility token:
 
 ```text
 local-dev-token-usr_admin
@@ -78,7 +79,7 @@ email: admin@example.com
 password: admin123
 ```
 
-This is still development auth, not production auth hardening.
+Interactive login now issues an expiring signed session, passwords are stored as salted PBKDF2 hashes, and existing local plaintext password records upgrade after a successful login. The compatibility token is accepted only when `APP_ENV=development`.
 
 ## Expected Walkthrough
 
@@ -89,7 +90,8 @@ This is still development auth, not production auth hardening.
 5. Open SQL Workspace to query the seeded datasets or save another SQL result as a data view.
 6. Open Charts to see ECharts rendering from `Demo Regional Revenue View`.
 7. Open Dashboards to compose dashboard, free-report, or data-screen layouts.
-8. Open Tasks to inspect the workflow trail for import, materialization, cleaning, SQL data view, chart, and dashboard actions.
+8. Open Tasks to inspect the workflow trail for import, materialization, cleaning, SQL data view, chart, dashboard, and export actions.
+9. Open Governance Center to inspect recoverable resources, trace a dashboard upstream to its source dataset, review operation logs, and manage project members.
 
 ## Verified Demo State
 

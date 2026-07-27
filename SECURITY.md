@@ -8,7 +8,9 @@ Before any non-local deployment:
 
 - Replace `APP_SECRET_KEY`, PostgreSQL credentials, and development access tokens.
 - Set a strong, stable `EXTERNAL_CONNECTION_ENCRYPTION_KEY`, store it outside the repository, and include it in protected deployment backups. Changing or losing this key makes stored external-database credentials unreadable.
-- Replace development authentication with production-grade password hashing and token handling.
+- Set `APP_ENV=production` so development compatibility tokens are rejected.
+- Set a strong `DEFAULT_ADMIN_PASSWORD`. User passwords use salted PBKDF2 hashes, and signed sessions expire according to `ACCESS_TOKEN_EXPIRE_MINUTES`.
+- Add TLS termination, login rate limiting, password reset, MFA or equivalent access policy, and centralized session revocation before public internet exposure.
 - Prefer a managed secret store for production deployments that require centralized credential rotation, access policies, or key auditing.
 - Use a least-privilege, read-only account for every external database connection.
 - Restrict CORS origins and network access to trusted hosts.

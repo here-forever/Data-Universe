@@ -9,6 +9,7 @@ from app.api.routes import (
     data_sources,
     data_views,
     datasets,
+    governance,
     health,
     imports,
     permissions,
@@ -19,6 +20,7 @@ from app.api.routes import (
 
 api_router = APIRouter()
 api_router.include_router(analytics.router)
+api_router.include_router(governance.router)
 api_router.include_router(auth.router)
 api_router.include_router(imports.router)
 api_router.include_router(datasets.router)

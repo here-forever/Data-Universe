@@ -19,3 +19,10 @@ class AuthRepository:
         self.session.commit()
         self.session.refresh(user)
         return user
+
+    def update_password_hash(self, user: UserModel, password_hash: str) -> UserModel:
+        user.password_hash = password_hash
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+        return user

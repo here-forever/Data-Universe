@@ -289,9 +289,7 @@ def test_materialization_rejects_source_row_count_drift(
     )
     assert upload_response.status_code == 201
     preview = upload_response.json()
-    source_path = next(
-        Path(get_settings().upload_storage_root).glob(f"{project_id}/*/orders.csv")
-    )
+    source_path = next(Path(get_settings().upload_storage_root).glob(f"{project_id}/*/orders.csv"))
     with source_path.open("a", encoding="utf-8") as source:
         source.write("4\n")
 

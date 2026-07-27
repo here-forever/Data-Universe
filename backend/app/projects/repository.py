@@ -30,6 +30,14 @@ class ProjectRepository:
     def get_project(self, project_id: str) -> ProjectModel | None:
         return self.session.get(ProjectModel, project_id)
 
+    def get_member(self, project_id: str, user_id: str) -> ProjectMemberModel | None:
+        return self.session.scalar(
+            select(ProjectMemberModel).where(
+                ProjectMemberModel.project_id == project_id,
+                ProjectMemberModel.user_id == user_id,
+            )
+        )
+
     def upsert_member(self, member: ProjectMemberModel) -> ProjectMemberModel:
         existing = self.session.scalar(
             select(ProjectMemberModel).where(
@@ -56,3 +64,7 @@ class ProjectRepository:
                 .order_by(ProjectMemberModel.created_at)
             )
         )
+
+    def delete_member(self, member: ProjectMemberModel) -> None:
+        self.session.delete(member)
+        self.session.commit()

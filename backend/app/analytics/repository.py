@@ -23,8 +23,18 @@ class AnalysisDefinitionRepository:
             self.session.rollback()
             raise
 
-    def get_definition(self, definition_id: str) -> AnalysisDefinitionModel | None:
-        return self.session.get(AnalysisDefinitionModel, definition_id)
+    def get_definition(
+        self,
+        definition_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> AnalysisDefinitionModel | None:
+        statement = select(AnalysisDefinitionModel).where(
+            AnalysisDefinitionModel.id == definition_id
+        )
+        if not include_archived:
+            statement = statement.where(AnalysisDefinitionModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def get_definition_by_name(
         self,
@@ -43,7 +53,10 @@ class AnalysisDefinitionRepository:
         return list(
             self.session.scalars(
                 select(AnalysisDefinitionModel)
-                .where(AnalysisDefinitionModel.project_id == project_id)
+                .where(
+                    AnalysisDefinitionModel.project_id == project_id,
+                    AnalysisDefinitionModel.archived_at.is_(None),
+                )
                 .order_by(
                     AnalysisDefinitionModel.updated_at.desc(),
                     AnalysisDefinitionModel.id.desc(),

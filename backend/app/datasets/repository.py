@@ -54,8 +54,16 @@ class DatasetRepository:
             self.session.rollback()
             raise
 
-    def get_dataset(self, dataset_id: str) -> DatasetModel | None:
-        return self.session.get(DatasetModel, dataset_id)
+    def get_dataset(
+        self,
+        dataset_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> DatasetModel | None:
+        statement = select(DatasetModel).where(DatasetModel.id == dataset_id)
+        if not include_archived:
+            statement = statement.where(DatasetModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def get_dataset_by_name(self, *, project_id: str, name: str) -> DatasetModel | None:
         return self.session.scalar(
@@ -69,7 +77,10 @@ class DatasetRepository:
         return list(
             self.session.scalars(
                 select(DatasetModel)
-                .where(DatasetModel.project_id == project_id)
+                .where(
+                    DatasetModel.project_id == project_id,
+                    DatasetModel.archived_at.is_(None),
+                )
                 .order_by(DatasetModel.created_at.desc())
             )
         )

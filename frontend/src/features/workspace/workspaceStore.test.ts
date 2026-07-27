@@ -4,7 +4,10 @@ import { useWorkspaceStore } from "./workspaceStore";
 
 describe("workspaceStore", () => {
   beforeEach(() => {
-    useWorkspaceStore.setState({ activeProjectId: null, sidebarCollapsed: false });
+    useWorkspaceStore.setState({
+      activeProjectId: null,
+      sidebarCollapsed: false,
+    });
   });
 
   test("stores active project id", () => {

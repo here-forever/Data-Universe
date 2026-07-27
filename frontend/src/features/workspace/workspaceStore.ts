@@ -11,5 +11,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeProjectId: null,
   sidebarCollapsed: false,
   setActiveProject: (projectId) => set({ activeProjectId: projectId }),
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () =>
+    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));

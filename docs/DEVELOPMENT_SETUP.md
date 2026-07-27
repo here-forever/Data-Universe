@@ -129,6 +129,8 @@ EXTERNAL_CONNECTION_ENCRYPTION_KEY=replace-with-a-long-random-local-key
 
 Keep this value private and stable. Existing external database passwords cannot be decrypted after the key changes.
 
+For a production-style local deployment, also set `APP_ENV=production`, `APP_DEBUG=false`, a strong `APP_SECRET_KEY`, and a strong `DEFAULT_ADMIN_PASSWORD`. Development tokens are rejected outside `APP_ENV=development`.
+
 Start the integrated development stack:
 
 ```powershell
@@ -173,6 +175,16 @@ Backend:  http://127.0.0.1:8000/api/health
 Postgres: 127.0.0.1:5432
 Redis:    127.0.0.1:6379
 ```
+
+## Release Validation and Recovery
+
+Validate a migrated, seeded Compose environment:
+
+```powershell
+docker compose exec -T backend python /demo/scripts/validate_release.py --project-id prj_demo
+```
+
+Backup, restore, upgrade, and recovery procedures are maintained in `docs/DEPLOYMENT_OPERATIONS.md`.
 
 ## Docker Image Pull Troubleshooting
 

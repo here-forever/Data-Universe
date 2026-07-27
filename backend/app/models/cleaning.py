@@ -2,10 +2,10 @@ from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.mixins import TimestampMixin
+from app.models.mixins import ArchivableMixin, TimestampMixin
 
 
-class CleaningRecipe(TimestampMixin, Base):
+class CleaningRecipe(ArchivableMixin, TimestampMixin, Base):
     __tablename__ = "cleaning_recipes"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

@@ -1,4 +1,8 @@
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+from app.core.database import get_db_session
+from app.models.user import User
 
 
 def login(client: TestClient) -> str:
@@ -18,6 +22,8 @@ def auth_headers(token: str) -> dict[str, str]:
 def test_login_returns_bearer_token_and_current_user(client: TestClient) -> None:
     token = login(client)
 
+    assert token.startswith("das1.")
+
     response = client.get("/api/auth/me", headers=auth_headers(token))
 
     assert response.status_code == 200
@@ -28,6 +34,15 @@ def test_login_returns_bearer_token_and_current_user(client: TestClient) -> None
         "is_active": True,
         "is_platform_admin": True,
     }
+
+    session = next(client.app.dependency_overrides[get_db_session]())
+    try:
+        admin = session.scalar(select(User).where(User.id == "usr_admin"))
+        assert admin is not None
+        assert admin.password_hash.startswith("pbkdf2_sha256$")
+        assert "admin123" not in admin.password_hash
+    finally:
+        session.close()
 
 
 def test_me_requires_valid_token(client: TestClient) -> None:
@@ -84,6 +99,49 @@ def test_project_members_can_be_added(client: TestClient) -> None:
         "admin@example.com",
         "analyst@example.com",
     ]
+
+    member_id = response.json()["user_id"]
+    update_response = client.patch(
+        f"/api/projects/{project['id']}/members/{member_id}",
+        headers=auth_headers(token),
+        json={"role": "viewer"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["role"] == "viewer"
+
+    viewer_headers = auth_headers(f"local-dev-token-{member_id}")
+    forbidden_response = client.post(
+        f"/api/projects/{project['id']}/members",
+        headers=viewer_headers,
+        json={"email": "blocked@example.com", "role": "editor"},
+    )
+    assert forbidden_response.status_code == 403
+    assert forbidden_response.json()["error"]["code"] == "project_access_denied"
+
+    remove_response = client.delete(
+        f"/api/projects/{project['id']}/members/{member_id}",
+        headers=auth_headers(token),
+    )
+    assert remove_response.status_code == 200
+    assert remove_response.json() == {"user_id": member_id, "removed": True}
+
+
+def test_project_owner_membership_cannot_be_changed(client: TestClient) -> None:
+    token = login(client)
+    project = client.post(
+        "/api/projects",
+        headers=auth_headers(token),
+        json={"name": "Protected ownership", "description": None},
+    ).json()
+
+    response = client.patch(
+        f"/api/projects/{project['id']}/members/usr_admin",
+        headers=auth_headers(token),
+        json={"role": "viewer"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "project_owner_membership_immutable"
 
 
 def test_resource_permissions_can_be_recorded(client: TestClient) -> None:

@@ -16,14 +16,25 @@ class VisualizationRepository:
         self.session.refresh(chart)
         return chart
 
-    def get_chart(self, chart_id: str) -> ChartDefinitionModel | None:
-        return self.session.get(ChartDefinitionModel, chart_id)
+    def get_chart(
+        self,
+        chart_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> ChartDefinitionModel | None:
+        statement = select(ChartDefinitionModel).where(ChartDefinitionModel.id == chart_id)
+        if not include_archived:
+            statement = statement.where(ChartDefinitionModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def list_charts(self, project_id: str) -> list[ChartDefinitionModel]:
         return list(
             self.session.scalars(
                 select(ChartDefinitionModel)
-                .where(ChartDefinitionModel.project_id == project_id)
+                .where(
+                    ChartDefinitionModel.project_id == project_id,
+                    ChartDefinitionModel.archived_at.is_(None),
+                )
                 .order_by(ChartDefinitionModel.created_at.desc())
             )
         )
@@ -37,8 +48,18 @@ class VisualizationRepository:
         self.session.refresh(dashboard)
         return dashboard
 
-    def get_dashboard(self, dashboard_id: str) -> DashboardDefinitionModel | None:
-        return self.session.get(DashboardDefinitionModel, dashboard_id)
+    def get_dashboard(
+        self,
+        dashboard_id: str,
+        *,
+        include_archived: bool = False,
+    ) -> DashboardDefinitionModel | None:
+        statement = select(DashboardDefinitionModel).where(
+            DashboardDefinitionModel.id == dashboard_id
+        )
+        if not include_archived:
+            statement = statement.where(DashboardDefinitionModel.archived_at.is_(None))
+        return self.session.scalar(statement)
 
     def update_dashboard(
         self,
@@ -53,6 +74,7 @@ class VisualizationRepository:
             .where(
                 DashboardDefinitionModel.id == dashboard_id,
                 DashboardDefinitionModel.configuration_version == expected_version,
+                DashboardDefinitionModel.archived_at.is_(None),
             )
             .values(
                 name=name,
@@ -71,7 +93,10 @@ class VisualizationRepository:
         return list(
             self.session.scalars(
                 select(DashboardDefinitionModel)
-                .where(DashboardDefinitionModel.project_id == project_id)
+                .where(
+                    DashboardDefinitionModel.project_id == project_id,
+                    DashboardDefinitionModel.archived_at.is_(None),
+                )
                 .order_by(DashboardDefinitionModel.created_at.desc())
             )
         )
