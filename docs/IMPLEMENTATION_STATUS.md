@@ -90,6 +90,8 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - External database imports are connected to task center, operation logs, basic lineage, dataset preview, and dataset quality profiling.
 - Basic operation log and lineage records for implemented workflow actions.
 - Dataset analytics API with validated filters, multi-dimension grouped metrics, descriptive statistics, Pearson correlation, and single-feature linear regression.
+- Saved analysis definition APIs for validated, project-scoped configuration persistence, reopening, rerunning, and result materialization.
+- Analysis result materialization into physical data views for aggregate, numeric-statistics, categorical-statistics, correlation, and regression outputs, with task, operation-log, and lineage records.
 - CSV and Excel analysis-result export with audit records.
 - Persisted dataset fields and physical table name mapping.
 - Demo seed script that creates/reuses a fixed `prj_demo` project, imports example CSV data, creates a cleaned dataset, saves a SQL data view, saves charts, saves a dashboard, and keeps task/lineage traceability.
@@ -111,6 +113,7 @@ Initial core tables have been modeled and migrated:
 - `operation_logs`
 - `lineage_edges`
 - `external_database_connections`
+- `analysis_definitions`
 
 ## Implemented Frontend Foundation
 
@@ -140,6 +143,7 @@ Initial core tables have been modeled and migrated:
 - Placeholder pages remain only for features not yet implemented beyond the current data intake, dataset, cleaning, SQL, chart, dashboard, and task surfaces.
 - Workspace home page now acts as a demo entry screen linking into the main implemented workflow surfaces.
 - Analysis workbench for dataset selection, global filtering, metric aggregation, dimension breakdown, descriptive statistics, correlation matrix, linear regression visualization, and CSV/Excel export.
+- Reusable analysis toolbar for saving, route-based reopening, rerunning, and materializing active results, with direct promotion into chart and dashboard/report builders.
 - Frontend API client tests.
 
 ## Implemented Docker Foundation
@@ -159,13 +163,14 @@ Initial core tables have been modeled and migrated:
 - Backend health check is reachable at `http://127.0.0.1:8000/api/health`.
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
-- Backend test suite passed locally: 72 tests.
-- Frontend test suite passed: 34 tests.
+- Backend test suite passed locally: 75 tests.
+- Frontend test suite passed: 35 tests.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
 - Demo seed has been executed successfully through Docker Compose.
 - Frontend demo pages were checked through a headless Edge/Playwright pass against the running Docker stack: home, datasets, charts, dashboards, and tasks loaded expected demo content, and the chart page rendered an ECharts canvas.
 - The local Data Sources page was re-verified in the in-app browser at the default desktop viewport and at a 390 × 844 mobile viewport: file selection state, clear/reset behavior, upload-history search feedback, responsive workflow ordering, page width, and console health all passed.
+- Phase 3 was verified in the in-app browser against Docker PostgreSQL: save, route-based reopen, rerun, data-view materialization, chart/dashboard promotion, desktop rendering, mobile width containment, and console health all passed.
 
 ## Current Limitations
 
@@ -195,6 +200,7 @@ Initial core tables have been modeled and migrated:
 - API data sources are still reserved for later milestones.
 - Scheduled sync and distributed worker execution are not implemented yet.
 - The interactive analysis service currently accepts datasets up to 250,000 rows per request and runs in the application process; larger workloads should move behind the task boundary in a later milestone.
+- Saved analysis definitions are immutable create/read assets in the current phase; rename, configuration revision, archive, and restore workflows remain future governance work.
 
 ## Updated Engineering Constraints
 
@@ -210,6 +216,6 @@ Future work must preserve these boundaries:
 
 ## Recommended Next Build Step
 
-The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phase 1, local intake completion, is delivered by the current milestone.
+The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phases 1 through 3 are delivered: local intake, reliable guarded imports, and reusable analysis assets now form a traceable local analysis workflow.
 
-Phase 2 has completed reliable, guarded local imports without introducing a distributed worker. The next implementation step is Phase 3: persist reusable analysis definitions, support reruns, materialize selected results as data views, and connect those assets to charts and dashboards with audit and lineage records.
+The next implementation step is Phase 4: persist dashboard filters and selections, complete reusable report/data-screen layout editing, unify CSV/Excel/printable exports, and expose longer export work through the task center.

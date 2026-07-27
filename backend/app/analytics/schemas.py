@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -130,3 +131,66 @@ class RegressionResponse(BaseModel):
     r_squared: float
     rmse: float
     points: list[RegressionPoint]
+
+
+AnalysisViewMode = Literal["dimension", "statistics", "correlation", "regression"]
+AnalysisChartType = Literal["bar", "line"]
+AnalysisResultType = Literal[
+    "aggregate",
+    "statistics_numeric",
+    "statistics_categorical",
+    "correlation",
+    "regression",
+]
+
+
+class AnalysisPresentation(BaseModel):
+    view_mode: AnalysisViewMode = "dimension"
+    chart_type: AnalysisChartType = "bar"
+
+
+class AnalysisWorkspaceConfiguration(BaseModel):
+    aggregate: AnalysisRequest
+    statistics: StatisticsRequest = Field(default_factory=StatisticsRequest)
+    correlation: CorrelationRequest | None = None
+    regression: RegressionRequest | None = None
+    presentation: AnalysisPresentation = Field(default_factory=AnalysisPresentation)
+
+
+class AnalysisDefinitionCreateRequest(BaseModel):
+    project_id: str = Field(min_length=1, max_length=64)
+    source_dataset_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    configuration: AnalysisWorkspaceConfiguration
+
+
+class AnalysisDefinitionResponse(BaseModel):
+    id: str
+    project_id: str
+    source_dataset_id: str
+    name: str
+    description: str | None
+    configuration_version: int
+    configuration: AnalysisWorkspaceConfiguration
+    last_run_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AnalysisDefinitionListResponse(BaseModel):
+    items: list[AnalysisDefinitionResponse]
+
+
+class AnalysisDefinitionRunResponse(BaseModel):
+    definition: AnalysisDefinitionResponse
+    aggregate: AnalysisResponse
+    statistics: StatisticsResponse
+    correlation: CorrelationResponse | None
+    regression: RegressionResponse | None
+
+
+class AnalysisMaterializeRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    result_type: AnalysisResultType = "aggregate"

@@ -252,10 +252,13 @@ def lineage_source_id(data_view: DataView) -> str:
 
 def stable_lineage_reference(source_type: str, value: str) -> str:
     digest = sha256(value.encode("utf-8")).hexdigest()[:24]
-    prefix = "".join(
-        character if character.isalnum() or character == "_" else "_"
-        for character in source_type
-    ).strip("_") or "source"
+    prefix = (
+        "".join(
+            character if character.isalnum() or character == "_" else "_"
+            for character in source_type
+        ).strip("_")
+        or "source"
+    )
     reference = f"{prefix}_{digest}"
     return reference[:128]
 

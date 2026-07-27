@@ -69,7 +69,7 @@ Delivered implementation:
 - Parse and materialization tasks persist running-stage checkpoints, retain their last checkpoint on failure, and keep retry metadata where recovery is possible.
 - Staged source files and failed upload metadata remain available after parse or materialization failures.
 
-### Phase 3: Reusable Analysis Assets — Next
+### Phase 3: Reusable Analysis Assets — Delivered
 
 Scope:
 
@@ -84,7 +84,15 @@ Acceptance:
 - A configured analysis can be saved, reopened, executed, and promoted without re-entering its setup.
 - Downstream resources retain stable references to the saved analysis and source dataset.
 
-### Phase 4: Report and Export Delivery
+Delivered implementation:
+
+- Versioned analysis definitions persist aggregate dimensions, metrics, filters, sorting, limits, statistics, correlation, regression, and presentation configuration.
+- Saved analyses can be selected or reopened through an `analysis_id` route, rerun against their source dataset, and restored without re-entering configuration.
+- Aggregate, numeric-statistics, categorical-statistics, correlation, and regression results can be materialized as physical data views.
+- Materialized views retain `analysis_definition` source references and feed the existing chart and dashboard/report builders through stable route parameters.
+- Dataset-to-analysis and analysis-to-data-view lineage, operation logs, and materialization task records preserve traceability.
+
+### Phase 4: Report and Export Delivery — Next
 
 Scope:
 

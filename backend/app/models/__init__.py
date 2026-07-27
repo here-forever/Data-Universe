@@ -1,3 +1,4 @@
+from app.models.analysis import AnalysisDefinition
 from app.models.audit import LineageEdge, OperationLog
 from app.models.cleaning import CleaningRecipe, CleaningStep
 from app.models.data_source import ExternalDatabaseConnection
@@ -16,6 +17,7 @@ from app.models.task import Task
 from app.models.user import User
 
 __all__ = [
+    "AnalysisDefinition",
     "Dataset",
     "DatasetField",
     "DatasetTableMap",

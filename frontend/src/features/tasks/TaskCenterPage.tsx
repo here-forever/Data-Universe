@@ -20,6 +20,7 @@ import { listTasks, retryTask, type TaskItem, type TaskStatus } from "./api";
 const DEFAULT_PROJECT_ID = "prj_demo";
 
 const TASK_TYPE_LABELS: Record<string, [string, string]> = {
+  analysis_data_view_materialization: ["分析数据视图", "Analysis data view"],
   chart_save: ["保存图表", "Chart save"],
   cleaning_recipe_execution: ["执行清洗", "Cleaning execution"],
   dashboard_save: ["保存仪表盘/报表", "Dashboard/report save"],

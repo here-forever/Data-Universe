@@ -1,4 +1,5 @@
 import { apiClient } from "../../lib/apiClient";
+import type { DataView } from "../dataViews/api";
 
 export type Aggregation =
   "count" | "sum" | "avg" | "min" | "max" | "distinct_count";
@@ -93,6 +94,76 @@ export interface RegressionResponse {
   points: Array<{ feature: number; actual: number; predicted: number }>;
 }
 
+export type AnalysisViewMode =
+  "dimension" | "statistics" | "correlation" | "regression";
+export type AnalysisChartType = "bar" | "line";
+export type AnalysisResultType =
+  | "aggregate"
+  | "statistics_numeric"
+  | "statistics_categorical"
+  | "correlation"
+  | "regression";
+
+export interface StatisticsRequest {
+  fields: string[];
+  filters: AnalysisFilter[];
+}
+
+export interface CorrelationRequest {
+  fields: string[];
+  filters: AnalysisFilter[];
+}
+
+export interface RegressionRequest {
+  feature: string;
+  target: string;
+  filters: AnalysisFilter[];
+}
+
+export interface AnalysisWorkspaceConfiguration {
+  aggregate: AnalysisRequest;
+  statistics: StatisticsRequest;
+  correlation: CorrelationRequest | null;
+  regression: RegressionRequest | null;
+  presentation: {
+    view_mode: AnalysisViewMode;
+    chart_type: AnalysisChartType;
+  };
+}
+
+export interface AnalysisDefinition {
+  id: string;
+  project_id: string;
+  source_dataset_id: string;
+  name: string;
+  description: string | null;
+  configuration_version: number;
+  configuration: AnalysisWorkspaceConfiguration;
+  last_run_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalysisDefinitionListResponse {
+  items: AnalysisDefinition[];
+}
+
+export interface AnalysisDefinitionRunResponse {
+  definition: AnalysisDefinition;
+  aggregate: AnalysisResponse;
+  statistics: StatisticsResponse;
+  correlation: CorrelationResponse | null;
+  regression: RegressionResponse | null;
+}
+
+export interface AnalysisDefinitionCreatePayload {
+  project_id: string;
+  source_dataset_id: string;
+  name: string;
+  description: string | null;
+  configuration: AnalysisWorkspaceConfiguration;
+}
+
 export async function aggregateDataset(
   datasetId: string,
   payload: AnalysisRequest,
@@ -155,4 +226,42 @@ export async function exportAnalysis(
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function listAnalysisDefinitions(
+  projectId: string,
+): Promise<AnalysisDefinitionListResponse> {
+  return apiClient.get<AnalysisDefinitionListResponse>(
+    "/analytics/definitions",
+    { project_id: projectId },
+  );
+}
+
+export async function createAnalysisDefinition(
+  payload: AnalysisDefinitionCreatePayload,
+): Promise<AnalysisDefinition> {
+  return apiClient.post<AnalysisDefinition>("/analytics/definitions", payload);
+}
+
+export async function runAnalysisDefinition(
+  definitionId: string,
+): Promise<AnalysisDefinitionRunResponse> {
+  return apiClient.post<AnalysisDefinitionRunResponse>(
+    `/analytics/definitions/${definitionId}/run`,
+    {},
+  );
+}
+
+export async function materializeAnalysisDefinition(
+  definitionId: string,
+  payload: {
+    name: string;
+    description: string | null;
+    result_type: AnalysisResultType;
+  },
+): Promise<DataView> {
+  return apiClient.post<DataView>(
+    `/analytics/definitions/${definitionId}/materialize`,
+    payload,
+  );
 }

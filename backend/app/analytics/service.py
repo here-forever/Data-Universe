@@ -11,6 +11,7 @@ from app.analytics.schemas import (
     AnalysisMetric,
     AnalysisRequest,
     AnalysisResponse,
+    AnalysisWorkspaceConfiguration,
     CategoricalStatistics,
     CategoryValueCount,
     CorrelationRequest,
@@ -39,6 +40,33 @@ class AnalyticsService:
     ) -> None:
         self.datasets = datasets
         self.audit = audit
+
+    def validate_configuration(
+        self,
+        dataset: Dataset,
+        configuration: AnalysisWorkspaceConfiguration,
+    ) -> None:
+        field_types = self._field_types(dataset)
+        dimensions = self._validate_fields(configuration.aggregate.dimensions, field_types)
+        metrics = self._validate_metrics(configuration.aggregate.metrics, field_types)
+        result_columns = [*dimensions, *(alias for _, alias in metrics)]
+        sort_by = configuration.aggregate.sort_by or metrics[0][1]
+        if sort_by not in result_columns:
+            raise AppError("Sort field is not part of the result", "invalid_analysis_sort", 400)
+        self._validate_filters(configuration.aggregate.filters, field_types)
+
+        statistics_fields = configuration.statistics.fields or list(field_types)
+        self._validate_fields(statistics_fields, field_types)
+        self._validate_filters(configuration.statistics.filters, field_types)
+        if configuration.correlation is not None:
+            self._validate_numeric_fields(configuration.correlation.fields, field_types)
+            self._validate_filters(configuration.correlation.filters, field_types)
+        if configuration.regression is not None:
+            self._validate_numeric_fields(
+                [configuration.regression.feature, configuration.regression.target],
+                field_types,
+            )
+            self._validate_filters(configuration.regression.filters, field_types)
 
     def aggregate(self, dataset_id: str, payload: AnalysisRequest) -> AnalysisResponse:
         dataset, rows = self._load_dataset_rows(dataset_id)
@@ -356,15 +384,22 @@ class AnalyticsService:
         filters: list[AnalysisFilter],
         field_types: dict[str, str],
     ) -> list[dict[str, object | None]]:
-        for item in filters:
-            self._validate_fields([item.field], field_types)
-            if item.operator == "in" and not isinstance(item.value, list):
-                raise AppError("The in operator requires a list", "invalid_analysis_filter", 400)
+        self._validate_filters(filters, field_types)
         return [
             row
             for row in rows
             if all(matches_filter(row.get(item.field), item) for item in filters)
         ]
+
+    def _validate_filters(
+        self,
+        filters: list[AnalysisFilter],
+        field_types: dict[str, str],
+    ) -> None:
+        for item in filters:
+            self._validate_fields([item.field], field_types)
+            if item.operator == "in" and not isinstance(item.value, list):
+                raise AppError("The in operator requires a list", "invalid_analysis_filter", 400)
 
     def _record_operation(
         self,

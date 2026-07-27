@@ -10,7 +10,7 @@ import {
   type EChartsCoreOption,
 } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   ArrowRight,
@@ -21,31 +21,46 @@ import {
   Check,
   ChevronDown,
   Download,
+  Database,
   FileSpreadsheet,
   Filter,
+  FolderOpen,
+  LayoutDashboard,
   LoaderCircle,
+  Play,
   RefreshCcw,
+  Save,
   Sigma,
   Sparkles,
   Target,
   TrendingUp,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "../../i18n";
 import { listDatasets, type Dataset, type DatasetField } from "../datasets/api";
+import type { DataView } from "../dataViews/api";
 import {
   aggregateDataset,
   calculateCorrelation,
   calculateRegression,
   calculateStatistics,
+  createAnalysisDefinition,
   exportAnalysis,
+  listAnalysisDefinitions,
+  materializeAnalysisDefinition,
+  runAnalysisDefinition,
   type Aggregation,
+  type AnalysisChartType,
+  type AnalysisDefinition,
   type AnalysisFilter,
   type AnalysisRequest,
   type AnalysisResponse,
+  type AnalysisResultType,
+  type AnalysisViewMode,
+  type AnalysisWorkspaceConfiguration,
   type CorrelationResponse,
   type FilterOperator,
   type RegressionResponse,
@@ -96,11 +111,12 @@ const VIEW_MODES = [
   { label: ["相关性", "Correlation"], value: "correlation", icon: Braces },
   { label: ["回归模型", "Regression"], value: "regression", icon: TrendingUp },
 ] as const;
-type ViewMode = (typeof VIEW_MODES)[number]["value"];
-type ChartType = "bar" | "line";
+type ViewMode = AnalysisViewMode;
+type ChartType = AnalysisChartType;
 
 export function AnalyticsWorkbenchPage() {
   const { formatNumber: formatLocaleNumber, t } = useI18n();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
   const [projectId, setProjectId] = useState(initialProjectId);
@@ -109,25 +125,54 @@ export function AnalyticsWorkbenchPage() {
   const [selectedDatasetId, setSelectedDatasetId] = useState(
     searchParams.get("dataset_id") ?? "",
   );
+  const [selectedDefinitionId, setSelectedDefinitionId] = useState(
+    searchParams.get("analysis_id") ?? "",
+  );
+  const initialDefinitionAppliedRef = useRef(!searchParams.get("analysis_id"));
+  const [analysisName, setAnalysisName] = useState("");
   const [dimension, setDimension] = useState("");
   const [secondaryDimension, setSecondaryDimension] = useState("");
   const [metric, setMetric] = useState("");
   const [aggregation, setAggregation] = useState<Aggregation>("sum");
   const [viewMode, setViewMode] = useState<ViewMode>("dimension");
   const [chartType, setChartType] = useState<ChartType>("bar");
+  const [correlationFieldSelection, setCorrelationFieldSelection] = useState<
+    string[]
+  >([]);
+  const [regressionFeatureSelection, setRegressionFeatureSelection] =
+    useState("");
+  const [regressionTargetSelection, setRegressionTargetSelection] =
+    useState("");
+  const [statisticsMaterialization, setStatisticsMaterialization] = useState<
+    "statistics_numeric" | "statistics_categorical"
+  >("statistics_numeric");
   const [filterField, setFilterField] = useState("");
   const [filterOperator, setFilterOperator] = useState<FilterOperator>("eq");
   const [filterValue, setFilterValue] = useState("");
   const [appliedFilters, setAppliedFilters] = useState<AnalysisFilter[]>([]);
   const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [materializedView, setMaterializedView] = useState<DataView | null>(
+    null,
+  );
 
   const datasetsQuery = useQuery({
     queryKey: ["datasets", submittedProjectId],
     queryFn: () => listDatasets(submittedProjectId),
     enabled: submittedProjectId.length > 0,
   });
+  const definitionsQuery = useQuery({
+    queryKey: ["analysis-definitions", submittedProjectId],
+    queryFn: () => listAnalysisDefinitions(submittedProjectId),
+    enabled: submittedProjectId.length > 0,
+  });
   const datasets = datasetsQuery.data?.items ?? [];
+  const definitions = useMemo(
+    () => definitionsQuery.data?.items ?? [],
+    [definitionsQuery.data],
+  );
+  const selectedDefinition =
+    definitions.find((item) => item.id === selectedDefinitionId) ?? null;
   const selectedDataset =
     datasets.find((item) => item.id === selectedDatasetId) ??
     datasets[0] ??
@@ -177,8 +222,29 @@ export function AnalyticsWorkbenchPage() {
     metric,
     preferredMetric ?? selectedDataset?.fields[0]?.name ?? "",
   );
-  const regressionFeature = numericFields[0]?.name ?? "";
-  const regressionTarget = numericFields[1]?.name ?? "";
+  const activeCorrelationFields = useMemo(() => {
+    const selectedFields = correlationFieldSelection.filter((field) =>
+      numericFields.some((candidate) => candidate.name === field),
+    );
+    return selectedFields.length >= 2
+      ? selectedFields
+      : numericFields.slice(0, 5).map((field) => field.name);
+  }, [correlationFieldSelection, numericFields]);
+  const regressionFeature = fieldValue(
+    selectedDataset,
+    regressionFeatureSelection,
+    numericFields[0]?.name ?? "",
+  );
+  const regressionTarget =
+    regressionTargetSelection !== regressionFeature
+      ? fieldValue(
+          selectedDataset,
+          regressionTargetSelection,
+          numericFields.find((field) => field.name !== regressionFeature)
+            ?.name ?? "",
+        )
+      : (numericFields.find((field) => field.name !== regressionFeature)
+          ?.name ?? "");
   const metricAlias = `${aggregation}_${activeMetric || "rows"}`;
   const analysisRequest = useMemo<AnalysisRequest>(
     () => ({
@@ -204,6 +270,34 @@ export function AnalyticsWorkbenchPage() {
       metricAlias,
     ],
   );
+  const currentConfiguration = useMemo<AnalysisWorkspaceConfiguration>(
+    () => ({
+      aggregate: analysisRequest,
+      statistics: { fields: [], filters: appliedFilters },
+      correlation:
+        activeCorrelationFields.length >= 2
+          ? { fields: activeCorrelationFields, filters: appliedFilters }
+          : null,
+      regression:
+        regressionFeature && regressionTarget
+          ? {
+              feature: regressionFeature,
+              target: regressionTarget,
+              filters: appliedFilters,
+            }
+          : null,
+      presentation: { view_mode: viewMode, chart_type: chartType },
+    }),
+    [
+      activeCorrelationFields,
+      analysisRequest,
+      appliedFilters,
+      chartType,
+      regressionFeature,
+      regressionTarget,
+      viewMode,
+    ],
+  );
 
   const aggregateQuery = useQuery({
     queryKey: ["analysis-aggregate", selectedDataset?.id, analysisRequest],
@@ -217,26 +311,23 @@ export function AnalyticsWorkbenchPage() {
     enabled: Boolean(selectedDataset),
     retry: false,
   });
-  const correlationFields = numericFields
-    .slice(0, 5)
-    .map((field) => field.name);
   const correlationQuery = useQuery({
     queryKey: [
       "analysis-correlation",
       selectedDataset?.id,
-      correlationFields,
+      activeCorrelationFields,
       appliedFilters,
     ],
     queryFn: () =>
       calculateCorrelation(
         selectedDataset!.id,
-        correlationFields,
+        activeCorrelationFields,
         appliedFilters,
       ),
     enabled:
       Boolean(selectedDataset) &&
       viewMode === "correlation" &&
-      correlationFields.length >= 2,
+      activeCorrelationFields.length >= 2,
     retry: false,
   });
   const regressionQuery = useQuery({
@@ -261,12 +352,208 @@ export function AnalyticsWorkbenchPage() {
     retry: false,
   });
 
+  const createDefinitionMutation = useMutation({
+    mutationFn: createAnalysisDefinition,
+    onSuccess: (definition) => {
+      setSelectedDefinitionId(definition.id);
+      setAnalysisName(definition.name);
+      void queryClient.invalidateQueries({
+        queryKey: ["analysis-definitions", submittedProjectId],
+      });
+      setFeedback(t("分析已保存。", "Analysis saved."));
+    },
+    onError: (error) => {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : t("保存分析失败", "Could not save analysis"),
+      );
+    },
+  });
+  const runDefinitionMutation = useMutation({
+    mutationFn: runAnalysisDefinition,
+    onSuccess: (result) => {
+      applyDefinition(result.definition);
+      const configuration = result.definition.configuration;
+      queryClient.setQueryData(
+        [
+          "analysis-aggregate",
+          result.definition.source_dataset_id,
+          configuration.aggregate,
+        ],
+        result.aggregate,
+      );
+      queryClient.setQueryData(
+        [
+          "analysis-statistics",
+          result.definition.source_dataset_id,
+          configuration.statistics.filters,
+        ],
+        result.statistics,
+      );
+      if (configuration.correlation && result.correlation) {
+        queryClient.setQueryData(
+          [
+            "analysis-correlation",
+            result.definition.source_dataset_id,
+            configuration.correlation.fields,
+            configuration.correlation.filters,
+          ],
+          result.correlation,
+        );
+      }
+      if (configuration.regression && result.regression) {
+        queryClient.setQueryData(
+          [
+            "analysis-regression",
+            result.definition.source_dataset_id,
+            configuration.regression.feature,
+            configuration.regression.target,
+            configuration.regression.filters,
+          ],
+          result.regression,
+        );
+      }
+      void queryClient.invalidateQueries({
+        queryKey: ["analysis-definitions", submittedProjectId],
+      });
+      setFeedback(
+        t("已按保存配置重新运行。", "Saved analysis rerun completed."),
+      );
+    },
+    onError: (error) => {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : t("重跑分析失败", "Could not rerun analysis"),
+      );
+    },
+  });
+  const materializeMutation = useMutation({
+    mutationFn: ({
+      definitionId,
+      name,
+      resultType,
+    }: {
+      definitionId: string;
+      name: string;
+      resultType: AnalysisResultType;
+    }) =>
+      materializeAnalysisDefinition(definitionId, {
+        name,
+        description: null,
+        result_type: resultType,
+      }),
+    onSuccess: (dataView) => {
+      setMaterializedView(dataView);
+      setFeedback(
+        t("分析结果已生成为数据视图。", "Analysis result materialized."),
+      );
+    },
+    onError: (error) => {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : t("生成数据视图失败", "Could not materialize data view"),
+      );
+    },
+  });
+
+  const applyDefinition = useCallback((definition: AnalysisDefinition) => {
+    const configuration = definition.configuration;
+    const savedMetric = configuration.aggregate.metrics[0];
+    const savedFilter = configuration.aggregate.filters[0];
+    initialDefinitionAppliedRef.current = true;
+    setSelectedDefinitionId(definition.id);
+    setSelectedDatasetId(definition.source_dataset_id);
+    setAnalysisName(definition.name);
+    setDimension(configuration.aggregate.dimensions[0] ?? "");
+    setSecondaryDimension(configuration.aggregate.dimensions[1] ?? "");
+    setMetric(savedMetric?.field ?? "");
+    setAggregation(savedMetric?.aggregation ?? "count");
+    setAppliedFilters(configuration.aggregate.filters);
+    setFilterField(savedFilter?.field ?? "");
+    setFilterOperator(savedFilter?.operator ?? "eq");
+    setFilterValue(savedFilter?.value == null ? "" : String(savedFilter.value));
+    setCorrelationFieldSelection(configuration.correlation?.fields ?? []);
+    setRegressionFeatureSelection(configuration.regression?.feature ?? "");
+    setRegressionTargetSelection(configuration.regression?.target ?? "");
+    setViewMode(configuration.presentation.view_mode);
+    setChartType(configuration.presentation.chart_type);
+    setMaterializedView(null);
+  }, []);
+
+  useEffect(() => {
+    if (!initialDefinitionAppliedRef.current && selectedDefinition) {
+      applyDefinition(selectedDefinition);
+    }
+  }, [applyDefinition, selectedDefinition]);
+
+  function saveCurrentDefinition() {
+    if (!selectedDataset) return;
+    const name = analysisName.trim();
+    if (!name) {
+      setFeedback(t("请输入分析名称。", "Enter an analysis name."));
+      return;
+    }
+    createDefinitionMutation.mutate({
+      project_id: submittedProjectId,
+      source_dataset_id: selectedDataset.id,
+      name,
+      description: null,
+      configuration: currentConfiguration,
+    });
+  }
+
+  function rerunSelectedDefinition() {
+    if (selectedDefinition) {
+      runDefinitionMutation.mutate(selectedDefinition.id);
+    }
+  }
+
+  function materializeSelectedResult() {
+    if (!selectedDefinition) return;
+    const resultType: AnalysisResultType =
+      viewMode === "dimension"
+        ? "aggregate"
+        : viewMode === "statistics"
+          ? statisticsMaterialization
+          : viewMode;
+    const resultLabel = t(
+      {
+        aggregate: "维度结果",
+        statistics_numeric: "数值统计",
+        statistics_categorical: "分类统计",
+        correlation: "相关矩阵",
+        regression: "回归结果",
+      }[resultType],
+      {
+        aggregate: "Dimension result",
+        statistics_numeric: "Numeric statistics",
+        statistics_categorical: "Category statistics",
+        correlation: "Correlation matrix",
+        regression: "Regression result",
+      }[resultType],
+    );
+    materializeMutation.mutate({
+      definitionId: selectedDefinition.id,
+      name: `${selectedDefinition.name} - ${resultLabel}`,
+      resultType,
+    });
+  }
+
   function submitProject(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextProjectId = projectId.trim();
     setSubmittedProjectId(nextProjectId);
     setSelectedDatasetId("");
+    setSelectedDefinitionId("");
+    setAnalysisName("");
     setAppliedFilters([]);
+    setCorrelationFieldSelection([]);
+    setRegressionFeatureSelection("");
+    setRegressionTargetSelection("");
+    setMaterializedView(null);
   }
 
   function applyFilter() {
@@ -314,9 +601,15 @@ export function AnalyticsWorkbenchPage() {
     }
   }
 
-  const isLoading = datasetsQuery.isLoading || datasetsQuery.isFetching;
+  const isLoading =
+    datasetsQuery.isLoading ||
+    datasetsQuery.isFetching ||
+    definitionsQuery.isLoading;
   const primaryError =
-    datasetsQuery.error ?? aggregateQuery.error ?? statisticsQuery.error;
+    datasetsQuery.error ??
+    definitionsQuery.error ??
+    aggregateQuery.error ??
+    statisticsQuery.error;
 
   return (
     <section className="analysis-page" aria-labelledby="analysis-title">
@@ -408,6 +701,142 @@ export function AnalyticsWorkbenchPage() {
         </span>
       </form>
 
+      <section
+        className="analysis-assets-bar"
+        aria-label={t("可复用分析", "Reusable analyses")}
+      >
+        <div className="analysis-assets-title">
+          <FolderOpen size={16} />
+          <div>
+            <strong>{t("已保存分析", "Saved analyses")}</strong>
+            <span>
+              {t(
+                `${definitions.length} 个配置`,
+                `${formatLocaleNumber(definitions.length)} definitions`,
+              )}
+            </span>
+          </div>
+        </div>
+        <SelectShell>
+          <select
+            aria-label={t("选择已保存分析", "Select saved analysis")}
+            value={selectedDefinitionId}
+            onChange={(event) => {
+              const definition = definitions.find(
+                (item) => item.id === event.target.value,
+              );
+              if (definition) applyDefinition(definition);
+              else setSelectedDefinitionId("");
+            }}
+          >
+            <option value="">{t("选择配置", "Select definition")}</option>
+            {definitions.map((definition) => (
+              <option key={definition.id} value={definition.id}>
+                {definition.name}
+              </option>
+            ))}
+          </select>
+        </SelectShell>
+        <button
+          className="analysis-icon-button"
+          aria-label={t("按保存配置重跑", "Rerun saved analysis")}
+          disabled={!selectedDefinition || runDefinitionMutation.isPending}
+          onClick={rerunSelectedDefinition}
+          title={t("按保存配置重跑", "Rerun saved analysis")}
+          type="button"
+        >
+          {runDefinitionMutation.isPending ? (
+            <LoaderCircle className="spin" size={15} />
+          ) : (
+            <Play size={15} />
+          )}
+        </button>
+        <input
+          aria-label={t("分析名称", "Analysis name")}
+          placeholder={
+            selectedDataset
+              ? t(
+                  `${selectedDataset.name} 分析`,
+                  `${selectedDataset.name} analysis`,
+                )
+              : t("分析名称", "Analysis name")
+          }
+          value={analysisName}
+          onChange={(event) => setAnalysisName(event.target.value)}
+        />
+        <button
+          className="analysis-button secondary"
+          disabled={!selectedDataset || createDefinitionMutation.isPending}
+          onClick={saveCurrentDefinition}
+          type="button"
+        >
+          {createDefinitionMutation.isPending ? (
+            <LoaderCircle className="spin" size={15} />
+          ) : (
+            <Save size={15} />
+          )}
+          {t("保存", "Save")}
+        </button>
+        {viewMode === "statistics" ? (
+          <SelectShell>
+            <select
+              aria-label={t("统计结果类型", "Statistics result type")}
+              value={statisticsMaterialization}
+              onChange={(event) =>
+                setStatisticsMaterialization(
+                  event.target.value as
+                    "statistics_numeric" | "statistics_categorical",
+                )
+              }
+            >
+              <option value="statistics_numeric">
+                {t("数值统计", "Numeric")}
+              </option>
+              <option value="statistics_categorical">
+                {t("分类统计", "Categorical")}
+              </option>
+            </select>
+          </SelectShell>
+        ) : null}
+        <button
+          className="analysis-button primary"
+          disabled={!selectedDefinition || materializeMutation.isPending}
+          onClick={materializeSelectedResult}
+          type="button"
+        >
+          {materializeMutation.isPending ? (
+            <LoaderCircle className="spin" size={15} />
+          ) : (
+            <Database size={15} />
+          )}
+          {t("生成数据视图", "Create data view")}
+        </button>
+      </section>
+
+      {materializedView ? (
+        <div className="analysis-promotion-bar" role="status">
+          <div>
+            <Check size={15} />
+            <span>{materializedView.name}</span>
+            <small>
+              {formatLocaleNumber(materializedView.row_count)} {t("行", "rows")}
+            </small>
+          </div>
+          <Link
+            to={`/charts?project_id=${submittedProjectId}&data_view_id=${materializedView.id}`}
+          >
+            <BarChart3 size={14} />
+            {t("配置图表", "Configure chart")}
+          </Link>
+          <Link
+            to={`/dashboards?project_id=${submittedProjectId}&data_view_id=${materializedView.id}`}
+          >
+            <LayoutDashboard size={14} />
+            {t("进入看板", "Open dashboard")}
+          </Link>
+        </div>
+      ) : null}
+
       {feedback ? (
         <div className="analysis-feedback" role="status">
           <Check size={15} />
@@ -493,6 +922,12 @@ export function AnalyticsWorkbenchPage() {
                     setSecondaryDimension("");
                     setMetric("");
                     setAppliedFilters([]);
+                    setSelectedDefinitionId("");
+                    setAnalysisName("");
+                    setCorrelationFieldSelection([]);
+                    setRegressionFeatureSelection("");
+                    setRegressionTargetSelection("");
+                    setMaterializedView(null);
                   }}
                 >
                   {datasets.map((dataset) => (
@@ -663,6 +1098,88 @@ export function AnalyticsWorkbenchPage() {
                 <X size={13} />
               </button>
             ))}
+            {viewMode === "correlation" ? (
+              <div className="analysis-model-config">
+                <div className="config-divider" />
+                <div className="control-label-row">
+                  <label>{t("相关性字段", "Correlation fields")}</label>
+                  <span>{activeCorrelationFields.length}/5</span>
+                </div>
+                <div className="analysis-field-checklist">
+                  {numericFields.map((field) => {
+                    const checked = activeCorrelationFields.includes(
+                      field.name,
+                    );
+                    return (
+                      <label key={field.name}>
+                        <input
+                          checked={checked}
+                          onChange={() => {
+                            const base = correlationFieldSelection.length
+                              ? correlationFieldSelection
+                              : activeCorrelationFields;
+                            setCorrelationFieldSelection(
+                              checked
+                                ? base.filter((name) => name !== field.name)
+                                : [...base, field.name].slice(0, 5),
+                            );
+                          }}
+                          type="checkbox"
+                        />
+                        <span>{field.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {viewMode === "regression" ? (
+              <div className="analysis-model-config">
+                <div className="config-divider" />
+                <Control
+                  label={t("特征字段", "Feature field")}
+                  htmlFor="analysis-regression-feature"
+                >
+                  <SelectShell>
+                    <select
+                      id="analysis-regression-feature"
+                      value={regressionFeature}
+                      onChange={(event) =>
+                        setRegressionFeatureSelection(event.target.value)
+                      }
+                    >
+                      {numericFields.map((field) => (
+                        <option key={field.name} value={field.name}>
+                          {field.name}
+                        </option>
+                      ))}
+                    </select>
+                  </SelectShell>
+                </Control>
+                <Control
+                  label={t("目标字段", "Target field")}
+                  htmlFor="analysis-regression-target"
+                >
+                  <SelectShell>
+                    <select
+                      id="analysis-regression-target"
+                      value={regressionTarget}
+                      onChange={(event) =>
+                        setRegressionTargetSelection(event.target.value)
+                      }
+                    >
+                      {numericFields
+                        .filter((field) => field.name !== regressionFeature)
+                        .map((field) => (
+                          <option key={field.name} value={field.name}>
+                            {field.name}
+                          </option>
+                        ))}
+                    </select>
+                  </SelectShell>
+                </Control>
+              </div>
+            ) : null}
           </aside>
 
           <main className="analysis-results">

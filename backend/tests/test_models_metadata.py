@@ -17,6 +17,7 @@ def test_core_mvp_tables_are_registered() -> None:
         "tasks",
         "operation_logs",
         "lineage_edges",
+        "analysis_definitions",
     }
 
     assert expected_tables.issubset(Base.metadata.tables.keys())
