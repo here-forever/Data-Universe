@@ -75,11 +75,17 @@ class TaskRetryExecutor:
         try:
             if operation == "file_preview_parse":
                 uploaded_file_id = require_string(payload, "uploaded_file_id")
-                preview = self.imports.create_preview_from_uploaded_file(uploaded_file_id)
+                preview = self.imports.create_preview_from_uploaded_file(
+                    uploaded_file_id,
+                    task_id=task.id,
+                )
                 return "file_import_preview", preview.id
 
             if operation == "dataset_materialization":
-                dataset = self.datasets.create_dataset(DatasetCreateRequest.model_validate(payload))
+                dataset = self.datasets.create_dataset(
+                    DatasetCreateRequest.model_validate(payload),
+                    task_id=task.id,
+                )
                 return "dataset", dataset.id
 
             if operation == "external_table_import":

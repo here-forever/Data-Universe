@@ -27,7 +27,10 @@ def get_import_service(
     return ImportService(
         ImportRepository(session),
         uploader_id=current_user.id,
-        storage=LocalFileStorage(settings.upload_storage_root),
+        storage=LocalFileStorage(
+            settings.upload_storage_root,
+            chunk_size_bytes=settings.import_storage_chunk_size_bytes,
+        ),
         audit=AuditService(AuditRepository(session), actor_id=current_user.id),
         tasks=TaskService(TaskRepository(session), initiator_id=current_user.id),
     )
@@ -59,15 +62,15 @@ def get_file_preview(
     response_model=FilePreviewResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_file_preview(
+def create_file_preview(
     project_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
     imports: Annotated[ImportService, Depends(get_import_service)],
 ) -> FilePreviewResponse:
-    content = await file.read()
-    preview = imports.create_file_preview(
+    file.file.seek(0)
+    preview = imports.create_file_preview_from_stream(
         project_id=project_id,
         file_name=file.filename or "uploaded_file",
-        content=content,
+        stream=file.file,
     )
     return to_file_preview_response(preview)

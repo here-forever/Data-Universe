@@ -1,6 +1,9 @@
+from collections.abc import Iterable
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.datasets.materializer import DatasetMaterializer
 from app.imports.schemas import ImportFieldPreview
 from app.models.dataset import Dataset as DatasetModel
@@ -19,7 +22,7 @@ class DatasetRepository:
         fields: list[DatasetFieldModel],
         table_map: DatasetTableMapModel,
         materialized_fields: list[ImportFieldPreview] | None = None,
-        materialized_rows: list[dict[str, object | None]] | None = None,
+        materialized_rows: Iterable[dict[str, object | None]] | None = None,
     ) -> DatasetModel:
         try:
             self.session.add(dataset)
@@ -28,11 +31,21 @@ class DatasetRepository:
             self.session.flush()
 
             if materialized_fields is not None and materialized_rows is not None:
-                DatasetMaterializer(self.session).create_table(
+                inserted_count = DatasetMaterializer(self.session).create_table(
                     table_name=table_map.physical_table_name,
                     fields=materialized_fields,
                     rows=materialized_rows,
                 )
+                if inserted_count != dataset.row_count:
+                    raise AppError(
+                        message=(
+                            f"Source row count changed during materialization: expected "
+                            f"{dataset.row_count:,}, received {inserted_count:,}. Reparse the file "
+                            "and retry dataset creation."
+                        ),
+                        code="source_row_count_changed",
+                        status_code=409,
+                    )
 
             self.session.commit()
             self.session.refresh(dataset)

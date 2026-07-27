@@ -1,8 +1,11 @@
 import csv
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from io import BytesIO, StringIO
+from io import BytesIO, TextIOWrapper
 from pathlib import Path
+from time import monotonic
 
 from openpyxl import load_workbook
 
@@ -12,20 +15,227 @@ from app.imports.schemas import FieldType, ImportFieldPreview
 SUPPORTED_EXTENSIONS = {".csv", ".xlsx", ".xlsm"}
 
 
+@dataclass(frozen=True)
+class ImportGuardrails:
+    max_file_size_bytes: int
+    max_rows: int
+    parse_timeout_seconds: float
+    inference_sample_size: int
+    preview_sample_size: int
+
+
 class ParsedTabularFile:
     def __init__(
         self,
         *,
         file_type: str,
         fields: list[ImportFieldPreview],
-        rows: list[dict[str, object | None]],
+        row_count: int,
+        sample_rows: list[dict[str, object | None]],
+        row_iterator_factory: Callable[[], Iterator[dict[str, object | None]]],
     ) -> None:
         self.file_type = file_type
         self.fields = fields
-        self.rows = rows
+        self.row_count = row_count
+        self.sample_rows = sample_rows
+        self._row_iterator_factory = row_iterator_factory
+
+    def iter_rows(self) -> Iterator[dict[str, object | None]]:
+        return self._row_iterator_factory()
 
 
-def parse_tabular_file(file_name: str, content: bytes) -> ParsedTabularFile:
+def parse_tabular_file(
+    file_name: str,
+    content: bytes,
+    guardrails: ImportGuardrails,
+) -> ParsedTabularFile:
+    validate_file_size(len(content), guardrails)
+    return _analyze_tabular_source(
+        file_name=file_name,
+        source=content,
+        guardrails=guardrails,
+    )
+
+
+def parse_tabular_path(
+    file_name: str,
+    path: Path,
+    guardrails: ImportGuardrails,
+) -> ParsedTabularFile:
+    validate_file_size(path.stat().st_size, guardrails)
+    return _analyze_tabular_source(
+        file_name=file_name,
+        source=path,
+        guardrails=guardrails,
+    )
+
+
+def open_parsed_tabular_path(
+    *,
+    file_name: str,
+    path: Path,
+    fields: list[ImportFieldPreview],
+    row_count: int,
+    sample_rows: list[dict[str, object | None]],
+    guardrails: ImportGuardrails,
+) -> ParsedTabularFile:
+    extension = validate_extension(file_name)
+    validate_file_size(path.stat().st_size, guardrails)
+    headers = [field.name for field in sorted(fields, key=lambda field: field.order)]
+    return ParsedTabularFile(
+        file_type=extension.removeprefix("."),
+        fields=fields,
+        row_count=row_count,
+        sample_rows=sample_rows,
+        row_iterator_factory=lambda: iter_typed_rows(
+            file_name=file_name,
+            source=path,
+            headers=headers,
+            fields=fields,
+            guardrails=guardrails,
+        ),
+    )
+
+
+def _analyze_tabular_source(
+    *,
+    file_name: str,
+    source: Path | bytes,
+    guardrails: ImportGuardrails,
+) -> ParsedTabularFile:
+    extension = validate_extension(file_name)
+    started_at = monotonic()
+    raw_rows = iter_raw_rows(file_name=file_name, source=source)
+    try:
+        raw_headers = next(raw_rows)
+    except StopIteration as error:
+        raise AppError(
+            message="Uploaded file has no rows",
+            code="empty_file",
+            status_code=400,
+        ) from error
+
+    headers = normalize_headers(raw_headers)
+    inference_rows: list[dict[str, object | None]] = []
+    row_count = 0
+    for raw_row in raw_rows:
+        check_parse_timeout(started_at, guardrails)
+        row = coerce_row(headers, raw_row)
+        if not any(value is not None for value in row.values()):
+            continue
+        row_count += 1
+        if row_count > guardrails.max_rows:
+            raise AppError(
+                message=(
+                    f"File contains more than the configured {guardrails.max_rows:,} row limit. "
+                    "Reduce the file or increase IMPORT_MAX_ROWS."
+                ),
+                code="file_row_limit_exceeded",
+                status_code=413,
+            )
+        if len(inference_rows) < guardrails.inference_sample_size:
+            inference_rows.append(row)
+
+    check_parse_timeout(started_at, guardrails)
+    fields = infer_fields(headers, inference_rows)
+    typed_sample_rows = [
+        coerce_typed_row(row, fields) for row in inference_rows[: guardrails.preview_sample_size]
+    ]
+    return ParsedTabularFile(
+        file_type=extension.removeprefix("."),
+        fields=fields,
+        row_count=row_count,
+        sample_rows=typed_sample_rows,
+        row_iterator_factory=lambda: iter_typed_rows(
+            file_name=file_name,
+            source=source,
+            headers=headers,
+            fields=fields,
+            guardrails=guardrails,
+        ),
+    )
+
+
+def iter_typed_rows(
+    *,
+    file_name: str,
+    source: Path | bytes,
+    headers: list[str],
+    fields: list[ImportFieldPreview],
+    guardrails: ImportGuardrails,
+) -> Iterator[dict[str, object | None]]:
+    started_at = monotonic()
+    raw_rows = iter_raw_rows(file_name=file_name, source=source)
+    next(raw_rows, None)
+    row_count = 0
+    for raw_row in raw_rows:
+        check_parse_timeout(started_at, guardrails)
+        row = coerce_row(headers, raw_row)
+        if not any(value is not None for value in row.values()):
+            continue
+        row_count += 1
+        if row_count > guardrails.max_rows:
+            raise AppError(
+                message=(
+                    f"File contains more than the configured {guardrails.max_rows:,} row limit. "
+                    "Reduce the file or increase IMPORT_MAX_ROWS."
+                ),
+                code="file_row_limit_exceeded",
+                status_code=413,
+            )
+        try:
+            yield coerce_typed_row(row, fields)
+        except (InvalidOperation, TypeError, ValueError) as error:
+            raise AppError(
+                message=(
+                    f"Row {row_count:,} does not match the inferred field types. "
+                    "Adjust the dataset field types or correct the source values and retry."
+                ),
+                code="file_row_type_mismatch",
+                status_code=422,
+            ) from error
+    check_parse_timeout(started_at, guardrails)
+
+
+def iter_raw_rows(
+    *,
+    file_name: str,
+    source: Path | bytes,
+) -> Iterator[list[object | None]]:
+    extension = validate_extension(file_name)
+    if extension == ".csv":
+        yield from iter_csv_rows(source)
+        return
+    yield from iter_excel_rows(source)
+
+
+def iter_csv_rows(source: Path | bytes) -> Iterator[list[object | None]]:
+    if isinstance(source, Path):
+        with source.open("r", encoding="utf-8-sig", newline="") as handle:
+            for row in csv.reader(handle):
+                yield list(row)
+        return
+
+    with TextIOWrapper(BytesIO(source), encoding="utf-8-sig", newline="") as handle:
+        for row in csv.reader(handle):
+            yield list(row)
+
+
+def iter_excel_rows(source: Path | bytes) -> Iterator[list[object | None]]:
+    workbook = load_workbook(
+        filename=source if isinstance(source, Path) else BytesIO(source),
+        read_only=True,
+        data_only=True,
+    )
+    try:
+        sheet = workbook.active
+        for row in sheet.iter_rows(values_only=True):
+            yield list(row)
+    finally:
+        workbook.close()
+
+
+def validate_extension(file_name: str) -> str:
     extension = Path(file_name).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
         raise AppError(
@@ -33,35 +243,33 @@ def parse_tabular_file(file_name: str, content: bytes) -> ParsedTabularFile:
             code="unsupported_file_type",
             status_code=400,
         )
+    return extension
 
-    raw_rows = parse_csv(content) if extension == ".csv" else parse_excel(content)
-    if not raw_rows:
-        raise AppError(message="Uploaded file has no rows", code="empty_file", status_code=400)
 
-    headers = normalize_headers(raw_rows[0])
-    data_rows = [
-        coerce_row(headers, row) for row in raw_rows[1:] if any(value is not None for value in row)
-    ]
-    fields = infer_fields(headers, data_rows)
-    typed_rows = [coerce_typed_row(row, fields) for row in data_rows]
-
-    return ParsedTabularFile(
-        file_type=extension.removeprefix("."),
-        fields=fields,
-        rows=typed_rows,
+def validate_file_size(size_bytes: int, guardrails: ImportGuardrails) -> None:
+    if size_bytes <= guardrails.max_file_size_bytes:
+        return
+    raise AppError(
+        message=(
+            f"File size exceeds the configured {guardrails.max_file_size_bytes:,} byte limit. "
+            "Reduce the file or increase IMPORT_MAX_FILE_SIZE_BYTES."
+        ),
+        code="file_size_limit_exceeded",
+        status_code=413,
     )
 
 
-def parse_csv(content: bytes) -> list[list[object | None]]:
-    text = content.decode("utf-8-sig")
-    reader = csv.reader(StringIO(text))
-    return [list(row) for row in reader]
-
-
-def parse_excel(content: bytes) -> list[list[object | None]]:
-    workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
-    sheet = workbook.active
-    return [list(row) for row in sheet.iter_rows(values_only=True)]
+def check_parse_timeout(started_at: float, guardrails: ImportGuardrails) -> None:
+    if monotonic() - started_at <= guardrails.parse_timeout_seconds:
+        return
+    raise AppError(
+        message=(
+            f"File parsing exceeded the configured {guardrails.parse_timeout_seconds:g} second "
+            "limit. Reduce the file or increase IMPORT_PARSE_TIMEOUT_SECONDS."
+        ),
+        code="file_parse_timeout",
+        status_code=408,
+    )
 
 
 def normalize_headers(raw_headers: list[object | None]) -> list[str]:

@@ -42,6 +42,37 @@ class TaskService:
     def reset(self) -> None:
         self._tasks = {}
 
+    def create_task(
+        self,
+        *,
+        project_id: str | None,
+        name: str,
+        task_type: str,
+        related_resource_type: str | None = None,
+        related_resource_id: str | None = None,
+        retry_payload: dict[str, object] | None = None,
+    ) -> Task:
+        now = datetime.now(UTC)
+        return self._save_task(
+            Task(
+                id=self._new_task_id(),
+                project_id=project_id,
+                initiator_id=self.initiator_id,
+                name=name,
+                task_type=task_type,
+                status="pending",
+                progress=0,
+                error_message=None,
+                related_resource_type=related_resource_type,
+                related_resource_id=related_resource_id,
+                retry_payload=retry_payload,
+                started_at=None,
+                finished_at=None,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+
     def record_success(
         self,
         *,
@@ -272,14 +303,31 @@ class TaskService:
         self._tasks[task.id] = updated
         return updated
 
-    def mark_running(self, task_id: str) -> Task:
+    def mark_running(self, task_id: str, *, progress: int = 10) -> Task:
         now = datetime.now(UTC)
         return self._update_task(
             task_id=task_id,
             status="running",
-            progress=10,
+            progress=validate_progress(progress, allow_complete=False),
             error_message=None,
             started_at=now,
+            finished_at=None,
+        )
+
+    def update_progress(self, task_id: str, progress: int) -> Task:
+        task = self.get_task(task_id)
+        if task.status not in ("pending", "running"):
+            raise AppError(
+                "Only pending or running tasks can report progress",
+                "task_progress_not_allowed",
+                409,
+            )
+        return self._update_task(
+            task_id=task_id,
+            status="running",
+            progress=max(task.progress, validate_progress(progress, allow_complete=False)),
+            error_message=None,
+            started_at=task.started_at or datetime.now(UTC),
             finished_at=None,
         )
 
@@ -300,12 +348,20 @@ class TaskService:
             finished_at=datetime.now(UTC),
         )
 
-    def mark_exception(self, task_id: str, error: Exception) -> Task:
+    def mark_exception(
+        self,
+        task_id: str,
+        error: Exception,
+        *,
+        retry_payload: dict[str, object] | None | object = _UNSET,
+    ) -> Task:
+        task = self.get_task(task_id)
         return self._update_task(
             task_id=task_id,
             status="retryable" if is_retryable_error(error) else "failed",
-            progress=100,
+            progress=task.progress,
             error_message=task_error_message(error),
+            retry_payload=retry_payload,
             finished_at=datetime.now(UTC),
         )
 
@@ -318,6 +374,7 @@ class TaskService:
         error_message: str | None,
         related_resource_type: str | None | object = _UNSET,
         related_resource_id: str | None | object = _UNSET,
+        retry_payload: dict[str, object] | None | object = _UNSET,
         started_at: datetime | None | object = _UNSET,
         finished_at: datetime | None | object = _UNSET,
     ) -> Task:
@@ -339,7 +396,7 @@ class TaskService:
             related_resource_id=(
                 task.related_resource_id if related_resource_id is _UNSET else related_resource_id
             ),
-            retry_payload=task.retry_payload,
+            retry_payload=task.retry_payload if retry_payload is _UNSET else retry_payload,
             started_at=task.started_at if started_at is _UNSET else started_at,
             finished_at=task.finished_at if finished_at is _UNSET else finished_at,
             created_at=task.created_at,
@@ -355,6 +412,7 @@ class TaskService:
             model.error_message = updated.error_message
             model.related_resource_type = updated.related_resource_type
             model.related_resource_id = updated.related_resource_id
+            model.retry_payload = updated.retry_payload
             model.started_at = updated.started_at
             model.finished_at = updated.finished_at
             model.updated_at = updated.updated_at
@@ -412,6 +470,17 @@ def task_error_message(error: Exception) -> str:
     if isinstance(error, AppError):
         return error.message
     return str(error) or error.__class__.__name__
+
+
+def validate_progress(progress: int, *, allow_complete: bool) -> int:
+    maximum = 100 if allow_complete else 99
+    if progress < 0 or progress > maximum:
+        raise AppError(
+            f"Task progress must be between 0 and {maximum}",
+            "invalid_task_progress",
+            400,
+        )
+    return progress
 
 
 task_service = TaskService()

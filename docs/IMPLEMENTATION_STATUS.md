@@ -19,7 +19,7 @@ Current implementation has moved beyond pure planning. The repository now has ba
 
 The active product scope is now local-file-first. CSV/Excel intake is the only data-source workflow shown in the frontend; existing external database backend foundations are retained but paused from current product development.
 
-The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests.
+The project now also has a demo-ready MVP seed path for `prj_demo`, so the current implementation can be opened as a real working demo instead of only being exercised through isolated API/tests. Phase 2 reliable large local imports is delivered; the next active milestone is reusable analysis assets.
 
 ## Implemented Documentation
 
@@ -49,6 +49,9 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - Project member API foundation.
 - Resource permission API foundation.
 - CSV and Excel parsing.
+- Bounded-memory CSV row streaming and read-only Excel worksheet iteration.
+- Configurable local-import byte, row-count, parse-time, inference-sample, preview-sample, storage-chunk, and materialization-batch limits.
+- Exact preview row counts with bounded type-inference and preview samples.
 - File import preview API.
 - Persisted uploaded-file metadata.
 - Staged uploaded-file storage before parsing, with upload status and parse error metadata.
@@ -58,6 +61,7 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - Dataset metadata creation API.
 - Project-scoped duplicate dataset name protection.
 - Formal dataset materialization into physical database tables.
+- Batched physical-table inserts from reopenable row iterators, with source row-count drift detection before commit.
 - Dataset list, detail, and paged preview APIs.
 - Dataset quality profile API with null, distinct, duplicate, sample, and warning summaries.
 - Visual cleaning recipe creation, preview, and execution into derived datasets.
@@ -66,6 +70,7 @@ The project now also has a demo-ready MVP seed path for `prj_demo`, so the curre
 - Chart definition creation/list APIs backed by data views.
 - Dashboard/report layout creation/list APIs backed by chart resources.
 - Task center API for project-scoped workflow task status visibility.
+- Persisted parsing and dataset-materialization progress checkpoints with the last completed checkpoint retained on failure.
 - Task failure records for import parsing, dataset materialization, cleaning execution, SQL execution/materialization, and chart/dashboard save actions.
 - Task retry API with persisted retry metadata and in-process synchronous replay for selected safe operations.
 - Retryable task execution currently covers dataset materialization, external table import, external SQL import, cleaning recipe execution, SQL data view materialization, chart save, and dashboard/report save.
@@ -154,7 +159,7 @@ Initial core tables have been modeled and migrated:
 - Backend health check is reachable at `http://127.0.0.1:8000/api/health`.
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
-- Backend test suite passed locally: 62 tests.
+- Backend test suite passed locally: 72 tests.
 - Frontend test suite passed: 34 tests.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
@@ -165,12 +170,15 @@ Initial core tables have been modeled and migrated:
 ## Current Limitations
 
 - Uploaded file bytes are saved in durable local storage, with metadata in PostgreSQL.
+- HTTP uploads are copied from FastAPI's spooled upload stream to durable storage in bounded chunks.
 - Uploads are staged before parsing, so failed parse attempts can be traced to an uploaded file record.
 - Upload/import history is queryable by project and shows uploaded-file status, parse errors, and linked preview metadata when parsing succeeds.
 - Import preview stores sample rows for confirmation before formal dataset creation.
+- Import preview scans the complete source for an exact guarded row count while retaining only configured inference and preview samples in application memory.
 - Parsed upload history records can restore their saved preview metadata without re-uploading the source file.
 - Data Sources now acts as the main local file intake overview and links into import previews, task traces, and formal datasets.
 - Formal dataset creation creates and populates a physical table.
+- Local-file formal datasets are populated in configurable batches inside one rollback boundary; source row-count changes abort the dataset rather than committing inconsistent metadata.
 - Dataset names are unique within a project to avoid accidental overwrite-like workflows.
 - Dataset quality profiling is computed on demand from materialized rows and is not yet cached or task-backed.
 - Operation logs and lineage records exist for the implemented workflow actions, but the lineage graph UI is not implemented yet.
@@ -204,10 +212,4 @@ Future work must preserve these boundaries:
 
 The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phase 1, local intake completion, is delivered by the current milestone.
 
-The next implementation step should make larger imports reliable without jumping directly to a distributed platform:
-
-1. Add chunked CSV/Excel reads and batched PostgreSQL writes for larger local imports.
-2. Move long-running local imports and analysis jobs behind the existing task boundary with progress updates and cancellation-safe failure records.
-3. Add reusable saved analysis definitions and promote selected results into data views, charts, dashboards, reports, and data screens.
-
-This order keeps the main data workflow traceable while avoiding premature Celery/RQ complexity.
+Phase 2 has completed reliable, guarded local imports without introducing a distributed worker. The next implementation step is Phase 3: persist reusable analysis definitions, support reruns, materialize selected results as data views, and connect those assets to charts and dashboards with audit and lineage records.

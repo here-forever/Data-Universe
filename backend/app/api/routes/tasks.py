@@ -42,12 +42,16 @@ def get_task_retry_executor(
 ) -> TaskRetryExecutor:
     audit = AuditService(AuditRepository(session), actor_id=current_user.id)
     tasks = TaskService(TaskRepository(session), initiator_id=current_user.id)
-    imports = ImportService(ImportRepository(session), uploader_id=current_user.id)
+    imports = ImportService(
+        ImportRepository(session),
+        uploader_id=current_user.id,
+        tasks=tasks,
+    )
     datasets = DatasetService(
         DatasetRepository(session),
         imports=imports,
         audit=audit,
-        tasks=None,
+        tasks=tasks,
     )
     data_sources = DataSourceService(DataSourceRepository(session), audit=audit)
     data_views = DataViewService(DataViewRepository(session), audit=audit)

@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://127.0.0.1:6379/0"
     local_storage_root: str = "./storage"
     upload_storage_root: str = "./storage/uploads"
+    import_max_file_size_bytes: int = Field(default=256 * 1024 * 1024, gt=0)
+    import_max_rows: int = Field(default=2_000_000, gt=0)
+    import_parse_timeout_seconds: float = Field(default=120, gt=0)
+    import_inference_sample_size: int = Field(default=1_000, gt=0)
+    import_preview_sample_size: int = Field(default=20, gt=0)
+    import_materialization_batch_size: int = Field(default=1_000, gt=0)
+    import_storage_chunk_size_bytes: int = Field(default=1024 * 1024, gt=0)
     access_token_expire_minutes: int = 1440
     password_hash_scheme: str = "bcrypt"
     external_connection_encryption_key: str | None = None

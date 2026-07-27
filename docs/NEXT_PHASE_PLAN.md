@@ -43,7 +43,7 @@ Acceptance:
 - Desktop and narrow-screen layouts have no page-level horizontal overflow.
 - Frontend tests, lint, build, and browser interaction checks pass.
 
-### Phase 2: Reliable Large Local Imports — Next
+### Phase 2: Reliable Large Local Imports — Delivered
 
 Scope:
 
@@ -60,7 +60,16 @@ Acceptance:
 - A failed run leaves the original file, error context, and retry entry intact.
 - Dataset row counts and lineage remain correct after batched materialization.
 
-### Phase 3: Reusable Analysis Assets
+Delivered implementation:
+
+- Upload requests copy their spooled file to durable storage in bounded chunks.
+- CSV parsing and read-only Excel worksheet iteration are reopenable and keep only bounded inference/preview samples.
+- Preview scans enforce configured byte, row, and elapsed-time limits while retaining exact accepted row counts.
+- Formal dataset tables consume row iterators through configurable insert batches and reject source row-count drift before commit.
+- Parse and materialization tasks persist running-stage checkpoints, retain their last checkpoint on failure, and keep retry metadata where recovery is possible.
+- Staged source files and failed upload metadata remain available after parse or materialization failures.
+
+### Phase 3: Reusable Analysis Assets — Next
 
 Scope:
 

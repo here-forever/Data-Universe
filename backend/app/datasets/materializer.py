@@ -1,3 +1,4 @@
+from collections.abc import Callable, Iterable
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -15,6 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.imports.schemas import ImportFieldPreview
 
@@ -23,16 +25,18 @@ POSTGRES_IDENTIFIER_LIMIT = 63
 
 
 class DatasetMaterializer:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, *, batch_size: int | None = None) -> None:
         self.session = session
+        self.batch_size = batch_size or get_settings().import_materialization_batch_size
 
     def create_table(
         self,
         *,
         table_name: str,
         fields: list[ImportFieldPreview],
-        rows: list[dict[str, object | None]],
-    ) -> None:
+        rows: Iterable[dict[str, object | None]],
+        progress_callback: Callable[[int], None] | None = None,
+    ) -> int:
         connection = self.session.connection()
         if inspect(connection).has_table(table_name):
             raise AppError(
@@ -44,11 +48,24 @@ class DatasetMaterializer:
         table = self._build_table(table_name=table_name, fields=fields)
         table.create(bind=connection, checkfirst=False)
 
-        if rows:
-            self.session.execute(
-                table.insert(),
-                [normalize_row(row=row, fields=fields) for row in rows],
-            )
+        inserted_count = 0
+        batch: list[dict[str, object | None]] = []
+        for row in rows:
+            batch.append(normalize_row(row=row, fields=fields))
+            if len(batch) < self.batch_size:
+                continue
+            self.session.execute(table.insert(), batch)
+            inserted_count += len(batch)
+            batch = []
+            if progress_callback is not None:
+                progress_callback(inserted_count)
+
+        if batch:
+            self.session.execute(table.insert(), batch)
+            inserted_count += len(batch)
+            if progress_callback is not None:
+                progress_callback(inserted_count)
+        return inserted_count
 
     def _build_table(self, *, table_name: str, fields: list[ImportFieldPreview]) -> Table:
         metadata = MetaData()

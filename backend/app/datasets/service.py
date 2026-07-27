@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from app.audit.service import AuditService
@@ -145,27 +146,60 @@ class DatasetService:
         )
         return dataset, rows
 
-    def create_dataset(self, payload: DatasetCreateRequest) -> Dataset:
-        try:
-            return self._create_dataset(payload)
-        except Exception as error:
-            self._record_dataset_failure(
+    def create_dataset(
+        self,
+        payload: DatasetCreateRequest,
+        *,
+        task_id: str | None = None,
+    ) -> Dataset:
+        owns_task = self.tasks is not None and task_id is None
+        if owns_task:
+            task = self.tasks.create_task(
                 project_id=payload.project_id,
-                name=payload.name,
+                name=f"Materialize dataset: {payload.name}",
                 task_type="dataset_materialization",
-                error=error,
                 related_resource_type="file_import_preview",
                 related_resource_id=payload.preview_id,
                 retry_payload=dataset_materialization_retry_payload(payload),
             )
+            task_id = task.id
+            self.tasks.mark_running(task_id, progress=10)
+        try:
+            dataset = self._create_dataset(payload, task_id=task_id)
+        except Exception as error:
+            if owns_task and task_id is not None:
+                self.tasks.mark_exception(task_id, error)
+            elif task_id is None:
+                self._record_dataset_failure(
+                    project_id=payload.project_id,
+                    name=payload.name,
+                    task_type="dataset_materialization",
+                    error=error,
+                    related_resource_type="file_import_preview",
+                    related_resource_id=payload.preview_id,
+                    retry_payload=dataset_materialization_retry_payload(payload),
+                )
             raise
+        if owns_task and task_id is not None:
+            self.tasks.mark_success(
+                task_id,
+                related_resource_type="dataset",
+                related_resource_id=dataset.id,
+            )
+        return dataset
 
-    def _create_dataset(self, payload: DatasetCreateRequest) -> Dataset:
+    def _create_dataset(
+        self,
+        payload: DatasetCreateRequest,
+        *,
+        task_id: str | None = None,
+    ) -> Dataset:
         preview = self.imports.get_preview(payload.preview_id)
         if preview is None or preview.project_id != payload.project_id:
             raise AppError(message="Preview not found", code="preview_not_found", status_code=404)
         self._validate_dataset_name_available(project_id=payload.project_id, name=payload.name)
         self._validate_fields(payload.fields)
+        self._update_task_progress(task_id, 20)
 
         dataset_id = new_id("dataset")
         if self.repository is None:
@@ -186,6 +220,7 @@ class DatasetService:
                 preview_id=preview.id,
                 fields=payload.fields,
             )
+            self._update_task_progress(task_id, 35)
             self.repository.save_dataset(
                 dataset=DatasetModel(
                     id=dataset.id,
@@ -216,8 +251,8 @@ class DatasetService:
                 materialized_fields=payload.fields,
                 materialized_rows=materialized_rows,
             )
+            self._update_task_progress(task_id, 90)
             self._record_dataset_audit(dataset)
-            self._record_dataset_task(dataset, task_type="dataset_materialization")
             return dataset
 
         self._datasets[dataset.id] = dataset
@@ -560,10 +595,9 @@ class DatasetService:
         *,
         preview_id: str,
         fields: list[ImportFieldPreview],
-    ) -> list[dict[str, object | None]]:
+    ) -> Iterable[dict[str, object | None]]:
         parsed_file = self.imports.parse_preview_source(preview_id)
         source_fields_by_order = {field.order: field for field in parsed_file.fields}
-        materialized_rows: list[dict[str, object | None]] = []
 
         for target_field in fields:
             if target_field.order not in source_fields_by_order:
@@ -573,17 +607,22 @@ class DatasetService:
                     status_code=400,
                 )
 
-        for row in parsed_file.rows:
-            materialized_row: dict[str, object | None] = {}
-            for target_field in fields:
-                source_field = source_fields_by_order[target_field.order]
-                materialized_row[target_field.name] = coerce_value(
-                    row.get(source_field.name),
-                    target_field.inferred_type,
-                )
-            materialized_rows.append(materialized_row)
+        def iter_materialized_rows() -> Iterator[dict[str, object | None]]:
+            for row in parsed_file.iter_rows():
+                materialized_row: dict[str, object | None] = {}
+                for target_field in fields:
+                    source_field = source_fields_by_order[target_field.order]
+                    materialized_row[target_field.name] = coerce_value(
+                        row.get(source_field.name),
+                        target_field.inferred_type,
+                    )
+                yield materialized_row
 
-        return materialized_rows
+        return iter_materialized_rows()
+
+    def _update_task_progress(self, task_id: str | None, progress: int) -> None:
+        if self.tasks is not None and task_id is not None:
+            self.tasks.update_progress(task_id, progress)
 
     def _record_dataset_audit(self, dataset: Dataset) -> None:
         if self.audit is None:

@@ -1,6 +1,6 @@
 # Development Setup
 
-Last updated: 2026-07-16
+Last updated: 2026-07-27
 
 ## Current Environment Status
 
@@ -68,6 +68,22 @@ Run backend dev server:
 ```powershell
 backend\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --reload
 ```
+
+## Local Import Guardrails
+
+Phase 2 local imports are bounded by environment settings. Defaults are suitable for local development and can be overridden in `.env`:
+
+| Setting | Default | Purpose |
+| --- | ---: | --- |
+| `IMPORT_MAX_FILE_SIZE_BYTES` | `268435456` | Maximum staged file size accepted for parsing. |
+| `IMPORT_MAX_ROWS` | `2000000` | Maximum non-empty data rows accepted per file. |
+| `IMPORT_PARSE_TIMEOUT_SECONDS` | `120` | Elapsed-time limit for each preview or materialization pass. |
+| `IMPORT_INFERENCE_SAMPLE_SIZE` | `1000` | Maximum rows retained for field inference. |
+| `IMPORT_PREVIEW_SAMPLE_SIZE` | `20` | Maximum typed sample rows persisted in the preview. |
+| `IMPORT_MATERIALIZATION_BATCH_SIZE` | `1000` | Rows sent in each physical-table insert batch. |
+| `IMPORT_STORAGE_CHUNK_SIZE_BYTES` | `1048576` | Bytes copied from the upload spool per storage write. |
+
+Files are staged before parsing. A guarded or failed parse therefore keeps the original file and upload error record for inspection; formal dataset failures roll back dataset metadata and table writes.
 
 ## Frontend Commands
 
