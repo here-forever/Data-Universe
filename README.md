@@ -28,7 +28,7 @@ Implemented product surfaces include:
 - Task Center with status, errors, related-resource links, and synchronous retry for supported operations.
 - Basic project collaboration, resource permissions, operation logs, and data lineage.
 
-Detailed status and known limitations are tracked in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md).
+Detailed status and known limitations are tracked in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). The active delivery sequence and acceptance criteria live in [`docs/NEXT_PHASE_PLAN.md`](docs/NEXT_PHASE_PLAN.md).
 
 The current product surface is intentionally local-file-first. Existing external PostgreSQL/MySQL backend foundations remain in the repository for future reactivation, but the Data Sources UI does not expose them in this stage.
 
@@ -80,7 +80,7 @@ External database passwords are encrypted at rest with the configured `EXTERNAL_
 
 ## Project Direction
 
-The main product and engineering constraints live in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md), with the staged roadmap in [`docs/MVP_ROADMAP.md`](docs/MVP_ROADMAP.md).
+The main product and engineering constraints live in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md), with the historical MVP roadmap in [`docs/MVP_ROADMAP.md`](docs/MVP_ROADMAP.md) and the active follow-up plan in [`docs/NEXT_PHASE_PLAN.md`](docs/NEXT_PHASE_PLAN.md).
 
 The immediate goal remains a complete personal/small-team data development and analysis system. Enterprise features such as distributed workers, scheduled sync, API sources, field/row permissions, full lineage visualization, multi-tenancy, and Kubernetes remain later-stage work.
 

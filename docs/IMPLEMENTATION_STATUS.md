@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-07-21
+Last updated: 2026-07-27
 
 This document records what has already been implemented so the project can continue without losing context.
 
@@ -117,6 +117,7 @@ Initial core tables have been modeled and migrated:
 - Basic app shell and navigation.
 - Dataset workspace page with project dataset list, schema, and paged preview.
 - Data source center focused on local CSV/Excel intake, upload outcomes, failed-parse traceability, preview recovery, and formal dataset bridge links.
+- Data source center now supports direct file selection and drag-and-drop, local format validation, selected-file metadata, one-step preview creation, upload-history status filters and search, and responsive mobile-first workflow ordering.
 - Import wizard page for CSV/Excel preview and dataset creation.
 - Import wizard upload status and failure recovery hints.
 - Import wizard upload history panel with parsed/failed file records and task trace links.
@@ -154,11 +155,12 @@ Initial core tables have been modeled and migrated:
 - Alembic migration has been applied to Docker PostgreSQL.
 - Login, project creation, member/permission creation, CSV/Excel preview upload, formal dataset creation, cleaning execution, SQL data view saving, chart/dashboard saving, task center listing, failure task recording, retry request flow, related-resource navigation, external PostgreSQL/MySQL connection create/list/test flows, schema discovery, external preview, field-edited import, external table import retry, external import history/detail, external table import, and external read-only SQL import were verified through tests or API flows.
 - Backend test suite passed locally: 62 tests.
-- Frontend test suite passed: 31 tests.
+- Frontend test suite passed: 34 tests.
 - Frontend lint passed.
 - Frontend build passed, with only the existing ECharts chunk-size warning.
 - Demo seed has been executed successfully through Docker Compose.
 - Frontend demo pages were checked through a headless Edge/Playwright pass against the running Docker stack: home, datasets, charts, dashboards, and tasks loaded expected demo content, and the chart page rendered an ECharts canvas.
+- The local Data Sources page was re-verified in the in-app browser at the default desktop viewport and at a 390 × 844 mobile viewport: file selection state, clear/reset behavior, upload-history search feedback, responsive workflow ordering, page width, and console health all passed.
 
 ## Current Limitations
 
@@ -199,6 +201,8 @@ Future work must preserve these boundaries:
 - Use the Figma Community "Workshop Toolkit" as the primary visual-mood reference while retaining the existing analytics-dashboard reference for information architecture. The product should combine soft pastel layers and friendly accents with compact, professional data work surfaces.
 
 ## Recommended Next Build Step
+
+The active phased plan is maintained in `docs/NEXT_PHASE_PLAN.md`. Phase 1, local intake completion, is delivered by the current milestone.
 
 The next implementation step should make larger imports reliable without jumping directly to a distributed platform:
 

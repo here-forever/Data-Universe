@@ -1,6 +1,20 @@
 ﻿# MVP Roadmap
 
-Last updated: 2026-07-04
+Last updated: 2026-07-27
+
+## 0. Current Execution Status
+
+The original MVP milestones below are now implemented as a demo-ready horizontal product workflow. Active development has moved to depth-first product hardening under the local-file-first scope.
+
+The executable follow-up sequence is maintained in [`docs/NEXT_PHASE_PLAN.md`](NEXT_PHASE_PLAN.md):
+
+1. Local intake completion — delivered in the current milestone.
+2. Reliable large local imports.
+3. Reusable analysis assets.
+4. Report and export delivery.
+5. Governance and release hardening.
+
+External database UI work and API data sources remain paused until these local workflow phases are complete.
 
 ## 1. MVP Goal
 

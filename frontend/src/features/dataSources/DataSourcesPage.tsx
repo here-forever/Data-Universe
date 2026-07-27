@@ -1,26 +1,39 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  CircleX,
   Clock3,
   Database,
   FileArchive,
+  FileCheck2,
   FileSpreadsheet,
   FileUp,
+  Filter,
   FolderClock,
   HardDrive,
+  LoaderCircle,
   RefreshCcw,
   Search,
   ShieldCheck,
   Table2,
+  UploadCloud,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "../../i18n";
 import { listDatasets, type Dataset } from "../datasets/api";
 import {
+  createFilePreview,
   listUploads,
   type UploadRecord,
   type UploadStatus,
@@ -30,9 +43,11 @@ const DEFAULT_PROJECT_ID = "prj_demo";
 
 export function DataSourcesPage() {
   const { t } = useI18n();
-  const [projectId, setProjectId] = useState(DEFAULT_PROJECT_ID);
+  const [searchParams] = useSearchParams();
+  const initialProjectId = searchParams.get("project_id") ?? DEFAULT_PROJECT_ID;
+  const [projectId, setProjectId] = useState(initialProjectId);
   const [submittedProjectId, setSubmittedProjectId] =
-    useState(DEFAULT_PROJECT_ID);
+    useState(initialProjectId);
   const uploadsQuery = useQuery({
     queryKey: ["import-uploads", submittedProjectId],
     queryFn: () => listUploads(submittedProjectId),
@@ -156,7 +171,7 @@ export function DataSourcesPage() {
               <span className="format-icon xls">XLS</span>
               <div>
                 <strong>{t("Excel 工作簿", "Excel workbook")}</strong>
-                <small>.xlsx / .xls</small>
+                <small>.xlsx / .xlsm</small>
               </div>
               <CheckCircle2 size={15} />
             </div>
@@ -186,39 +201,11 @@ export function DataSourcesPage() {
         </aside>
 
         <main className="local-source-main">
-          <section className="local-upload-zone">
-            <div className="upload-zone-art">
-              <FileUp size={27} />
-              <i />
-            </div>
-            <div>
-              <h2>{t("导入 CSV 或 Excel", "Import CSV or Excel")}</h2>
-              <p>
-                {t(
-                  "上传后先确认字段类型与样例数据，再生成可用于清洗、分析和报表的正式数据集。",
-                  "Confirm field types and sample data before creating a dataset for cleaning, analysis, and reporting.",
-                )}
-              </p>
-            </div>
-            <div className="upload-zone-actions">
-              <Link
-                className="analysis-button primary"
-                to={`/import?project_id=${submittedProjectId}`}
-              >
-                <FileUp size={16} />
-                {t("上传文件", "Upload file")}
-              </Link>
-              {latestParsedUpload ? (
-                <Link
-                  className="analysis-button secondary"
-                  to={`/import?project_id=${submittedProjectId}&preview_id=${latestParsedUpload.preview_id}`}
-                >
-                  <FolderClock size={16} />
-                  {t("继续最近预览", "Continue latest preview")}
-                </Link>
-              ) : null}
-            </div>
-          </section>
+          <LocalUploadDock
+            key={submittedProjectId}
+            latestParsedUpload={latestParsedUpload}
+            projectId={submittedProjectId}
+          />
 
           {uploadsQuery.error || datasetsQuery.error ? (
             <SourceState
@@ -245,6 +232,218 @@ export function DataSourcesPage() {
             projectId={submittedProjectId}
           />
         </main>
+      </div>
+    </section>
+  );
+}
+
+const ACCEPTED_FILE_EXTENSIONS = [".csv", ".xlsx", ".xlsm"];
+
+function LocalUploadDock({
+  latestParsedUpload,
+  projectId,
+}: {
+  latestParsedUpload: UploadRecord | undefined;
+  projectId: string;
+}) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const previewMutation = useMutation({
+    mutationFn: (file: File) => createFilePreview(projectId, file),
+    onSuccess: (preview) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["import-uploads", preview.project_id],
+      });
+      void navigate(
+        `/import?project_id=${encodeURIComponent(preview.project_id)}&preview_id=${encodeURIComponent(preview.id)}`,
+      );
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["import-uploads", projectId],
+      });
+    },
+  });
+
+  function selectFile(file: File | null) {
+    previewMutation.reset();
+    setValidationError(null);
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!isAcceptedFile(file)) {
+      setSelectedFile(null);
+      setValidationError(
+        t(
+          "仅支持 .csv、.xlsx 或 .xlsm 文件",
+          "Only .csv, .xlsx, or .xlsm files are supported",
+        ),
+      );
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    selectFile(event.target.files?.[0] ?? null);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    if (!previewMutation.isPending) setIsDragging(true);
+  }
+
+  function handleDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    if (!previewMutation.isPending) {
+      selectFile(event.dataTransfer.files?.[0] ?? null);
+    }
+  }
+
+  function clearFile() {
+    setSelectedFile(null);
+    setValidationError(null);
+    previewMutation.reset();
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  const errorMessage = validationError ?? previewMutation.error?.message;
+
+  return (
+    <section
+      className={`local-upload-zone${isDragging ? " is-dragging" : ""}${selectedFile ? " is-ready" : ""}${previewMutation.isPending ? " is-uploading" : ""}`}
+      data-testid="local-upload-dropzone"
+      onDragEnter={handleDragOver}
+      onDragLeave={() => setIsDragging(false)}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        id="local-source-file"
+        className="sr-only"
+        aria-label={t("选择本地数据文件", "Choose local data file")}
+        accept=".csv,.xlsx,.xlsm"
+        disabled={previewMutation.isPending}
+        type="file"
+        onChange={handleFileChange}
+        onClick={(event) => {
+          event.currentTarget.value = "";
+        }}
+      />
+      <div className="upload-zone-art" aria-hidden="true">
+        {previewMutation.isPending ? (
+          <LoaderCircle className="spin" size={27} />
+        ) : selectedFile ? (
+          <FileCheck2 size={27} />
+        ) : (
+          <UploadCloud size={27} />
+        )}
+        <i />
+      </div>
+      <div className="upload-zone-copy" aria-live="polite">
+        <span className="upload-zone-kicker">
+          {isDragging
+            ? t("松开即可加入", "Drop to add")
+            : selectedFile
+              ? t("文件已就绪", "File ready")
+              : t("拖放或选择文件", "Drop or choose a file")}
+        </span>
+        <h2>
+          {selectedFile
+            ? selectedFile.name
+            : t("导入 CSV 或 Excel", "Import CSV or Excel")}
+        </h2>
+        {selectedFile ? (
+          <div className="selected-file-meta">
+            <span>{fileExtensionLabel(selectedFile)}</span>
+            <span>{formatBytes(selectedFile.size)}</span>
+            <span>{t("原文件将保留", "Original will be retained")}</span>
+          </div>
+        ) : (
+          <p>
+            {t(
+              "在这里选择文件并直接创建解析预览，随后确认字段类型，再生成正式数据集。",
+              "Choose a file here to create a parse preview, confirm field types, and then materialize a dataset.",
+            )}
+          </p>
+        )}
+        {errorMessage ? (
+          <div className="upload-dock-error" role="alert">
+            <CircleX size={14} />
+            <span>{errorMessage}</span>
+          </div>
+        ) : null}
+      </div>
+      <div className="upload-zone-actions">
+        {selectedFile ? (
+          <>
+            <button
+              className="analysis-button primary"
+              disabled={previewMutation.isPending}
+              onClick={() => previewMutation.mutate(selectedFile)}
+              type="button"
+            >
+              {previewMutation.isPending ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <FileUp size={16} />
+              )}
+              {previewMutation.isPending
+                ? t("正在解析", "Parsing")
+                : t("解析并预览", "Parse and preview")}
+            </button>
+            <button
+              className="analysis-button secondary"
+              disabled={previewMutation.isPending}
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+            >
+              {t("更换文件", "Replace file")}
+            </button>
+            <button
+              className="upload-clear-button"
+              aria-label={t("清除已选文件", "Clear selected file")}
+              disabled={previewMutation.isPending}
+              onClick={clearFile}
+              title={t("清除已选文件", "Clear selected file")}
+              type="button"
+            >
+              <X size={16} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="analysis-button primary"
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+            >
+              <FileUp size={16} />
+              {t("选择文件", "Choose file")}
+            </button>
+            {latestParsedUpload?.preview_id ? (
+              <Link
+                className="analysis-button secondary"
+                to={`/import?project_id=${encodeURIComponent(projectId)}&preview_id=${encodeURIComponent(latestParsedUpload.preview_id)}`}
+              >
+                <FolderClock size={16} />
+                {t("继续最近预览", "Continue latest preview")}
+              </Link>
+            ) : null}
+          </>
+        )}
       </div>
     </section>
   );
@@ -283,6 +482,50 @@ function UploadHistory({
   uploads: UploadRecord[];
 }) {
   const { formatDate, formatNumber, t } = useI18n();
+  const [statusFilter, setStatusFilter] = useState<"all" | UploadStatus>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase();
+  const filteredUploads = useMemo(
+    () =>
+      uploads.filter((upload) => {
+        const matchesStatus =
+          statusFilter === "all" || upload.status === statusFilter;
+        const matchesSearch =
+          normalizedSearch.length === 0 ||
+          upload.file_name.toLocaleLowerCase().includes(normalizedSearch) ||
+          upload.file_type.toLocaleLowerCase().includes(normalizedSearch) ||
+          upload.error_message?.toLocaleLowerCase().includes(normalizedSearch);
+        return matchesStatus && Boolean(matchesSearch);
+      }),
+    [normalizedSearch, statusFilter, uploads],
+  );
+  const filters: Array<{
+    count: number;
+    label: string;
+    value: "all" | UploadStatus;
+  }> = [
+    {
+      count: uploads.length,
+      label: t("全部", "All"),
+      value: "all",
+    },
+    {
+      count: uploads.filter((upload) => upload.status === "parsed").length,
+      label: t("已解析", "Parsed"),
+      value: "parsed",
+    },
+    {
+      count: uploads.filter((upload) => upload.status === "failed").length,
+      label: t("解析失败", "Failed"),
+      value: "failed",
+    },
+    {
+      count: uploads.filter((upload) => upload.status === "pending").length,
+      label: t("处理中", "Pending"),
+      value: "pending",
+    },
+  ];
+
   return (
     <section className="source-table-section">
       <div className="source-section-heading">
@@ -292,11 +535,55 @@ function UploadHistory({
         </div>
         <span>
           {t(
-            `${uploads.length} 条记录`,
-            `${formatNumber(uploads.length)} records`,
+            `${filteredUploads.length} / ${uploads.length} 条记录`,
+            `${formatNumber(filteredUploads.length)} / ${formatNumber(uploads.length)} records`,
           )}
         </span>
       </div>
+      {uploads.length ? (
+        <div className="source-history-toolbar">
+          <div
+            className="source-history-filters"
+            role="group"
+            aria-label={t("按解析状态筛选", "Filter by parse status")}
+          >
+            <Filter size={14} aria-hidden="true" />
+            {filters.map((filter) => (
+              <button
+                key={filter.value}
+                aria-pressed={statusFilter === filter.value}
+                className={statusFilter === filter.value ? "is-active" : ""}
+                onClick={() => setStatusFilter(filter.value)}
+                type="button"
+              >
+                {filter.label}
+                <span>{formatNumber(filter.count)}</span>
+              </button>
+            ))}
+          </div>
+          <label className="source-history-search">
+            <Search size={14} aria-hidden="true" />
+            <span className="sr-only">
+              {t("搜索上传记录", "Search upload history")}
+            </span>
+            <input
+              aria-label={t("搜索上传记录", "Search upload history")}
+              placeholder={t("搜索文件名或格式", "Search file or format")}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            {searchTerm ? (
+              <button
+                aria-label={t("清除搜索", "Clear search")}
+                onClick={() => setSearchTerm("")}
+                type="button"
+              >
+                <X size={13} />
+              </button>
+            ) : null}
+          </label>
+        </div>
+      ) : null}
       {isLoading ? (
         <SourceState
           title={t("正在读取上传历史", "Loading upload history")}
@@ -316,7 +603,16 @@ function UploadHistory({
           )}
         />
       ) : null}
-      {uploads.length ? (
+      {!isLoading && uploads.length > 0 && filteredUploads.length === 0 ? (
+        <SourceState
+          title={t("没有匹配的导入记录", "No matching imports")}
+          detail={t(
+            "调整状态筛选或搜索关键词后重试。",
+            "Try another status or search term.",
+          )}
+        />
+      ) : null}
+      {filteredUploads.length ? (
         <div className="source-table-wrap">
           <table>
             <thead>
@@ -330,7 +626,7 @@ function UploadHistory({
               </tr>
             </thead>
             <tbody>
-              {uploads.map((upload) => (
+              {filteredUploads.map((upload) => (
                 <tr key={upload.id}>
                   <td>
                     <div className="file-cell">
@@ -470,9 +766,17 @@ function UploadStatusChip({ status }: { status: UploadStatus }) {
     parsed: t("已解析", "Parsed"),
     pending: t("待解析", "Pending"),
   };
+  const icon =
+    status === "parsed" ? (
+      <CheckCircle2 size={13} />
+    ) : status === "failed" ? (
+      <CircleX size={13} />
+    ) : (
+      <Clock3 size={13} />
+    );
   return (
     <span className={`upload-status status-${status}`}>
-      {status === "parsed" ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+      {icon}
       {labels[status]}
     </span>
   );
@@ -506,4 +810,15 @@ function formatBytes(value: number): string {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function isAcceptedFile(file: File): boolean {
+  const lowerName = file.name.toLocaleLowerCase();
+  return ACCEPTED_FILE_EXTENSIONS.some((extension) =>
+    lowerName.endsWith(extension),
+  );
+}
+
+function fileExtensionLabel(file: File): string {
+  return file.name.split(".").pop()?.toLocaleUpperCase() ?? "FILE";
 }
