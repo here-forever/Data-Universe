@@ -42,7 +42,7 @@ class StoryService:
             record=False,
         )
         strongest = exploration.correlations.get("strongest_pairs", [])
-        first_chart = exploration.charts[0] if exploration.charts else {}
+        first_chart = exploration.charts[0].model_dump(mode="json") if exploration.charts else {}
         english = payload.locale == "en-US"
         summary = (
             (

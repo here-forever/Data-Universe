@@ -102,9 +102,14 @@ export interface ParticleResponse {
 }
 
 export interface ChartRecommendation {
+  id: string;
+  rank: number;
   type: "line" | "bar" | "scatter" | "histogram";
   title: string;
   reason: string;
+  score: number;
+  confidence: "high" | "medium" | "exploratory";
+  signals: string[];
   x_field: string;
   y_field?: string;
   categories?: string[];
@@ -127,6 +132,7 @@ export interface ExploreResponse {
     quality_score: number;
     numeric_fields: number;
     categorical_fields: number;
+    datetime_fields: number;
     filters: ExploreFilter[];
   };
   correlations: {

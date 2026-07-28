@@ -2,11 +2,14 @@
 .github
 .agents
 .codex
+.codex-*
 .worktrees
 **/.venv
 **/.vite
 **/__pycache__
 **/.pytest_cache
+**/.pytest_tmp
+**/.test-runs
 **/.mypy_cache
 **/.ruff_cache
 **/coverage

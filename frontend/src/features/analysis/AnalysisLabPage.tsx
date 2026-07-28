@@ -26,6 +26,7 @@ import {
 import { type TranslationKey, useI18n } from "../../i18n";
 import {
   type AnalysisRun,
+  type ChartRecommendation,
   type ColumnProfile,
   type ExploreFilter,
   queryKeys,
@@ -57,6 +58,13 @@ const metricNameKeys: Record<string, TranslationKey> = {
   significant: "analysis.metric.significant",
   clusters: "analysis.metric.clusters",
   silhouette_score: "analysis.metric.silhouette_score",
+};
+
+const chartTypeNameKeys: Record<ChartRecommendation["type"], TranslationKey> = {
+  line: "analysis.chartType.line",
+  bar: "analysis.chartType.bar",
+  scatter: "analysis.chartType.scatter",
+  histogram: "analysis.chartType.histogram",
 };
 
 export default function AnalysisLabPage() {
@@ -187,6 +195,13 @@ function ExploreWorkspace({
   theme: "dark" | "light";
 }) {
   const { formatNumber, t } = useI18n();
+  const [selectedChartId, setSelectedChartId] = useState(
+    exploration.charts[0]?.id ?? "",
+  );
+  const selectedChart =
+    exploration.charts.find((chart) => chart.id === selectedChartId) ??
+    exploration.charts[0];
+
   return (
     <div className="explore-workspace">
       <div className="analysis-vitals">
@@ -207,33 +222,113 @@ function ExploreWorkspace({
           <strong>{exploration.anomalies.length}</strong>
         </span>
       </div>
-      <div className="recommended-charts">
-        {exploration.charts.map((chart) => (
-          <article className="chart-panel" key={`${chart.type}-${chart.title}`}>
-            <div className="chart-heading">
-              <div>
-                <strong>{chart.title}</strong>
-                <small>{chart.reason}</small>
-              </div>
-              {chart.type === "bar" && (
-                <span>
-                  <Filter size={13} />
-                  {t("analysis.clickToLink")}
-                </span>
-              )}
+      {selectedChart ? (
+        <section className="smart-recommender">
+          <header className="recommender-heading">
+            <div>
+              <span className="eyebrow">
+                <Sparkles size={14} /> {t("analysis.smartRecommendation")}
+              </span>
+              <h2>
+                {t("analysis.recommendationTitle", {
+                  type: t(chartTypeNameKeys[selectedChart.type]),
+                })}
+              </h2>
+              <p>
+                {t("analysis.recommendationSummary", {
+                  rows: formatNumber(exploration.overview.row_count),
+                  columns: exploration.overview.column_count,
+                  count: exploration.charts.length,
+                })}
+              </p>
             </div>
-            <Suspense
-              fallback={
-                <div className="chart-loading">
-                  <LoaderCircle className="spin" />
-                </div>
-              }
+            <div
+              aria-label={t("analysis.fitScoreLabel", {
+                score: selectedChart.score,
+              })}
+              className={`recommendation-score ${selectedChart.confidence}`}
             >
-              <AnalysisChart chart={chart} onFilter={onFilter} theme={theme} />
-            </Suspense>
-          </article>
-        ))}
-      </div>
+              <strong>{selectedChart.score}</strong>
+              <small>{t("analysis.fitScore")}</small>
+            </div>
+          </header>
+
+          <div className="recommender-layout">
+            <aside className="recommendation-rail">
+              <span>{t("analysis.rankedOptions")}</span>
+              {exploration.charts.map((chart) => (
+                <button
+                  aria-pressed={chart.id === selectedChart.id}
+                  className={chart.id === selectedChart.id ? "is-active" : ""}
+                  key={chart.id}
+                  onClick={() => setSelectedChartId(chart.id)}
+                  type="button"
+                >
+                  <b>0{chart.rank}</b>
+                  <span>
+                    <strong>{t(chartTypeNameKeys[chart.type])}</strong>
+                    <small>
+                      {chart.x_field}
+                      {chart.y_field ? ` × ${chart.y_field}` : ""}
+                    </small>
+                  </span>
+                  <em>{chart.score}</em>
+                </button>
+              ))}
+            </aside>
+
+            <article className="recommended-chart-stage">
+              <div className="chart-heading recommendation-chart-heading">
+                <div>
+                  <div className="recommendation-badges">
+                    <span>
+                      {selectedChart.rank === 1
+                        ? t("analysis.autoApplied")
+                        : t("analysis.optionApplied")}
+                    </span>
+                    <span className={`confidence-${selectedChart.confidence}`}>
+                      {t(`analysis.confidence.${selectedChart.confidence}`)}
+                    </span>
+                  </div>
+                  <strong>{selectedChart.title}</strong>
+                  <small>{selectedChart.reason}</small>
+                </div>
+                {selectedChart.type === "bar" ? (
+                  <span>
+                    <Filter size={13} />
+                    {t("analysis.clickToLink")}
+                  </span>
+                ) : null}
+              </div>
+              <div className="recommendation-signals">
+                {selectedChart.signals.map((signal) => (
+                  <span key={signal}>
+                    <CheckCircle2 size={12} />
+                    {signal}
+                  </span>
+                ))}
+              </div>
+              <Suspense
+                fallback={
+                  <div className="chart-loading">
+                    <LoaderCircle className="spin" />
+                  </div>
+                }
+              >
+                <AnalysisChart
+                  chart={selectedChart}
+                  onFilter={onFilter}
+                  theme={theme}
+                />
+              </Suspense>
+            </article>
+          </div>
+        </section>
+      ) : (
+        <p className="empty-inline smart-recommendation-empty">
+          {t("analysis.noChartRecommendation")}
+        </p>
+      )}
       <div className="eda-lower-grid">
         <section className="correlation-panel">
           <div className="section-heading">

@@ -198,6 +198,7 @@ def build_exploration(
             "categorical_fields": sum(
                 column["kind"] in {"categorical", "boolean"} for column in profile["columns"]
             ),
+            "datetime_fields": sum(column["kind"] == "datetime" for column in profile["columns"]),
         },
         "correlations": correlations,
         "distributions": distributions,
@@ -299,37 +300,73 @@ def chart_recommendations(
     columns: list[dict[str, Any]],
     locale: str = "zh-CN",
 ) -> list[dict[str, Any]]:
-    kinds = {column["name"]: column["kind"] for column in columns}
-    numeric = [name for name, kind in kinds.items() if kind == "numeric"]
-    categorical = [name for name, kind in kinds.items() if kind in {"categorical", "boolean"}]
-    datetimes = [name for name, kind in kinds.items() if kind == "datetime"]
+    profiles = {column["name"]: column for column in columns}
+    numeric = [column["name"] for column in columns if column["kind"] == "numeric"]
+    categorical = [
+        column["name"] for column in columns if column["kind"] in {"categorical", "boolean"}
+    ]
+    datetimes = [column["name"] for column in columns if column["kind"] == "datetime"]
     charts: list[dict[str, Any]] = []
 
     if datetimes and numeric:
-        time_field, value_field = datetimes[0], numeric[0]
+        time_field = max(datetimes, key=lambda field: profiles[field]["unique_count"])
+        value_field = max(numeric, key=lambda field: numeric_field_score(frame, profiles[field]))
         data = frame[[time_field, value_field]].dropna().head(500).copy()
         data[time_field] = pd.to_datetime(data[time_field], errors="coerce")
         data[value_field] = pd.to_numeric(data[value_field], errors="coerce")
         data = data.dropna().sort_values(time_field)
-        charts.append(
-            {
-                "type": "line",
-                "title": (
-                    f"{value_field} over time" if locale == "en-US" else f"{value_field} 随时间变化"
-                ),
-                "reason": (
-                    "A time field and a numeric measure support trend exploration"
-                    if locale == "en-US"
-                    else "时间字段与数值指标适合用于探索变化趋势"
-                ),
-                "x_field": time_field,
-                "y_field": value_field,
-                "categories": [value.isoformat() for value in data[time_field]],
-                "series": [round(float(value), 6) for value in data[value_field]],
-            }
-        )
+        if len(data) >= 2:
+            time_coverage = len(data) / max(len(frame), 1)
+            time_points = int(data[time_field].nunique())
+            score = 68 + min(time_points, 12) + time_coverage * 10
+            charts.append(
+                recommendation_metadata(
+                    {
+                        "type": "line",
+                        "title": (
+                            f"{value_field} over time"
+                            if locale == "en-US"
+                            else f"{value_field} 随时间变化"
+                        ),
+                        "reason": (
+                            "A time field and a numeric measure support trend exploration"
+                            if locale == "en-US"
+                            else "时间字段与数值指标适合用于探索变化趋势"
+                        ),
+                        "x_field": time_field,
+                        "y_field": value_field,
+                        "categories": [value.isoformat() for value in data[time_field]],
+                        "series": [round(float(value), 6) for value in data[value_field]],
+                    },
+                    score,
+                    [
+                        localized(
+                            locale,
+                            f"Detected {time_points} ordered time points",
+                            f"识别到 {time_points} 个有序时间点",
+                        ),
+                        localized(
+                            locale,
+                            f"{time_coverage:.0%} of rows contain both fields",
+                            f"{time_coverage:.0%} 的数据行同时包含这两个字段",
+                        ),
+                        localized(
+                            locale,
+                            f"Matched 1 time and {len(numeric)} numeric columns",
+                            f"匹配到 1 个时间列与 {len(numeric)} 个数值列",
+                        ),
+                    ],
+                )
+            )
     if categorical and numeric:
-        category, value_field = categorical[0], numeric[0]
+        category = max(
+            categorical,
+            key=lambda field: categorical_field_score(frame, profiles[field]),
+        )
+        value_field = max(
+            numeric,
+            key=lambda field: grouped_difference_score(frame, category, field),
+        )
         grouped = (
             frame.assign(**{value_field: pd.to_numeric(frame[value_field], errors="coerce")})
             .groupby(category, dropna=False)[value_field]
@@ -338,61 +375,277 @@ def chart_recommendations(
             .sort_values(ascending=False)
             .head(12)
         )
-        charts.append(
-            {
-                "type": "bar",
-                "title": (
-                    f"Average {value_field} by {category}"
-                    if locale == "en-US"
-                    else f"按 {category} 比较 {value_field} 均值"
-                ),
-                "reason": (
-                    "Compare a numeric measure across groups"
-                    if locale == "en-US"
-                    else "比较不同群体之间的数值指标"
-                ),
-                "x_field": category,
-                "y_field": value_field,
-                "categories": [str(value) for value in grouped.index],
-                "series": [round(float(value), 6) for value in grouped.values],
-            }
+        if len(grouped) >= 2:
+            category_count = int(frame[category].nunique(dropna=True))
+            group_difference = grouped_difference_score(frame, category, value_field)
+            category_fit = max(0.0, 1 - abs(category_count - 6) / 12)
+            score = 62 + category_fit * 13 + group_difference * 14
+            charts.append(
+                recommendation_metadata(
+                    {
+                        "type": "bar",
+                        "title": (
+                            f"Average {value_field} by {category}"
+                            if locale == "en-US"
+                            else f"按 {category} 比较 {value_field} 均值"
+                        ),
+                        "reason": (
+                            "Compare a numeric measure across groups"
+                            if locale == "en-US"
+                            else "比较不同群体之间的数值指标"
+                        ),
+                        "x_field": category,
+                        "y_field": value_field,
+                        "categories": [str(value) for value in grouped.index],
+                        "series": [round(float(value), 6) for value in grouped.values],
+                    },
+                    score,
+                    [
+                        localized(
+                            locale,
+                            f"{category} contains {category_count} comparable groups",
+                            f"{category} 包含 {category_count} 个可比较分组",
+                        ),
+                        localized(
+                            locale,
+                            f"Group means differ by {group_difference:.0%} of the overall scale",
+                            f"组间均值差异约占整体尺度的 {group_difference:.0%}",
+                        ),
+                        localized(
+                            locale,
+                            (
+                                f"Matched {len(categorical)} categorical and "
+                                f"{len(numeric)} numeric columns"
+                            ),
+                            f"匹配到 {len(categorical)} 个分类列与 {len(numeric)} 个数值列",
+                        ),
+                    ],
+                )
+            )
+    if categorical and not numeric:
+        category = max(
+            categorical,
+            key=lambda field: categorical_field_score(frame, profiles[field]),
         )
+        counts = frame[category].fillna("Missing").astype(str).value_counts().head(12)
+        if len(counts) >= 2:
+            category_count = int(frame[category].nunique(dropna=True))
+            score = 64 + max(0.0, 1 - abs(category_count - 6) / 12) * 16
+            charts.append(
+                recommendation_metadata(
+                    {
+                        "type": "bar",
+                        "title": (
+                            f"Count by {category}" if locale == "en-US" else f"{category} 类别频数"
+                        ),
+                        "reason": localized(
+                            locale,
+                            "Compare the frequency of categories",
+                            "比较不同类别的数据量与构成差异",
+                        ),
+                        "x_field": category,
+                        "categories": [str(value) for value in counts.index],
+                        "series": counts.astype(int).tolist(),
+                    },
+                    score,
+                    [
+                        localized(
+                            locale,
+                            f"{category} contains {category_count} categories",
+                            f"{category} 包含 {category_count} 个类别",
+                        ),
+                        localized(
+                            locale,
+                            "No numeric measure is required for frequency comparison",
+                            "频数比较无需额外选择数值指标",
+                        ),
+                        localized(
+                            locale,
+                            f"Selected from {len(categorical)} categorical columns",
+                            f"从 {len(categorical)} 个分类列中筛选",
+                        ),
+                    ],
+                )
+            )
     if len(numeric) >= 2:
-        left, right = numeric[:2]
+        left, right, correlation = strongest_numeric_pair(frame, numeric)
         sample = frame[[left, right]].apply(pd.to_numeric, errors="coerce").dropna().head(600)
-        charts.append(
-            {
-                "type": "scatter",
-                "title": (f"{left} and {right}" if locale == "en-US" else f"{left} 与 {right}"),
-                "reason": (
-                    "Inspect relationship, clusters, and unusual observations"
-                    if locale == "en-US"
-                    else "观察字段关系、群组与异常样本"
-                ),
-                "x_field": left,
-                "y_field": right,
-                "points": [[round(float(x), 6), round(float(y), 6)] for x, y in sample.to_numpy()],
-            }
-        )
+        if len(sample) >= 3:
+            pair_coverage = len(sample) / max(len(frame), 1)
+            score = 59 + abs(correlation) * 24 + pair_coverage * 10
+            charts.append(
+                recommendation_metadata(
+                    {
+                        "type": "scatter",
+                        "title": (
+                            f"{left} and {right}" if locale == "en-US" else f"{left} 与 {right}"
+                        ),
+                        "reason": (
+                            "Inspect relationship, clusters, and unusual observations"
+                            if locale == "en-US"
+                            else "观察字段关系、群组与异常样本"
+                        ),
+                        "x_field": left,
+                        "y_field": right,
+                        "points": [
+                            [round(float(x), 6), round(float(y), 6)] for x, y in sample.to_numpy()
+                        ],
+                    },
+                    score,
+                    [
+                        localized(
+                            locale,
+                            f"Strongest numeric pair has |r| = {abs(correlation):.2f}",
+                            f"最强数值字段对的相关系数 |r| = {abs(correlation):.2f}",
+                        ),
+                        localized(
+                            locale,
+                            f"{pair_coverage:.0%} complete paired observations",
+                            f"完整配对样本占比 {pair_coverage:.0%}",
+                        ),
+                        localized(
+                            locale,
+                            f"Selected from {len(numeric)} numeric columns",
+                            f"从 {len(numeric)} 个数值列中筛选",
+                        ),
+                    ],
+                )
+            )
     if numeric:
-        field = numeric[0]
+        field = max(numeric, key=lambda item: distribution_interest(frame[item]))
         values = pd.to_numeric(frame[field], errors="coerce").dropna().astype(float)
-        counts, edges = np.histogram(values, bins=min(14, max(5, int(math.sqrt(len(values))))))
-        charts.append(
-            {
-                "type": "histogram",
-                "title": (f"Distribution of {field}" if locale == "en-US" else f"{field} 分布"),
-                "reason": (
-                    "Reveal skew, concentration, and outliers"
-                    if locale == "en-US"
-                    else "识别偏态、集中趋势与异常值"
-                ),
-                "x_field": field,
-                "categories": [f"{edges[index]:.2f}" for index in range(len(counts))],
-                "series": counts.astype(int).tolist(),
-            }
-        )
-    return charts[:4]
+        if not values.empty:
+            counts, edges = np.histogram(values, bins=min(14, max(5, int(math.sqrt(len(values))))))
+            skewness = safe_skew(values)
+            outlier_ratio = numeric_outlier_ratio(values)
+            interest = distribution_interest(values)
+            coverage = len(values) / max(len(frame), 1)
+            score = 57 + interest * 18 + coverage * 9
+            charts.append(
+                recommendation_metadata(
+                    {
+                        "type": "histogram",
+                        "title": (
+                            f"Distribution of {field}" if locale == "en-US" else f"{field} 分布"
+                        ),
+                        "reason": (
+                            "Reveal skew, concentration, and outliers"
+                            if locale == "en-US"
+                            else "识别偏态、集中趋势与异常值"
+                        ),
+                        "x_field": field,
+                        "categories": [f"{edges[index]:.2f}" for index in range(len(counts))],
+                        "series": counts.astype(int).tolist(),
+                    },
+                    score,
+                    [
+                        localized(
+                            locale,
+                            f"Distribution skewness is {skewness:.2f}",
+                            f"分布偏度为 {skewness:.2f}",
+                        ),
+                        localized(
+                            locale,
+                            f"IQR outliers account for {outlier_ratio:.1%}",
+                            f"IQR 异常值占比 {outlier_ratio:.1%}",
+                        ),
+                        localized(
+                            locale,
+                            f"Selected the most distinctive of {len(numeric)} numeric columns",
+                            f"从 {len(numeric)} 个数值列中选择分布特征最明显的字段",
+                        ),
+                    ],
+                )
+            )
+    ranked = sorted(charts, key=lambda chart: chart["score"], reverse=True)
+    for rank, chart in enumerate(ranked, start=1):
+        chart["rank"] = rank
+        chart["id"] = f"{chart['type']}:{chart['x_field']}:{chart.get('y_field', '')}"
+    return ranked[:4]
+
+
+def localized(locale: str, english: str, chinese: str) -> str:
+    return english if locale == "en-US" else chinese
+
+
+def recommendation_metadata(
+    chart: dict[str, Any], score: float, signals: list[str]
+) -> dict[str, Any]:
+    normalized_score = int(round(min(98, max(50, score))))
+    confidence = (
+        "high" if normalized_score >= 85 else "medium" if normalized_score >= 72 else "exploratory"
+    )
+    return {
+        **chart,
+        "score": normalized_score,
+        "confidence": confidence,
+        "signals": signals,
+    }
+
+
+def numeric_field_score(frame: pd.DataFrame, profile: dict[str, Any]) -> float:
+    values = pd.to_numeric(frame[profile["name"]], errors="coerce").dropna().astype(float)
+    if values.empty:
+        return 0.0
+    coverage = len(values) / max(len(frame), 1)
+    has_variation = float(values.nunique() > 1)
+    return coverage * 0.65 + has_variation * 0.2 + distribution_interest(values) * 0.15
+
+
+def categorical_field_score(frame: pd.DataFrame, profile: dict[str, Any]) -> float:
+    unique_count = int(profile["unique_count"])
+    if unique_count < 2:
+        return 0.0
+    cardinality_fit = max(0.0, 1 - abs(unique_count - 6) / 18)
+    coverage = frame[profile["name"]].notna().mean()
+    return cardinality_fit * 0.7 + float(coverage) * 0.3
+
+
+def grouped_difference_score(frame: pd.DataFrame, category: str, value_field: str) -> float:
+    values = pd.to_numeric(frame[value_field], errors="coerce")
+    grouped = values.groupby(frame[category], dropna=False).mean().dropna()
+    overall_std = float(values.std(ddof=0))
+    if len(grouped) < 2 or not math.isfinite(overall_std) or overall_std == 0:
+        return 0.0
+    return min(float(grouped.std(ddof=0)) / overall_std, 1.0)
+
+
+def strongest_numeric_pair(frame: pd.DataFrame, fields: list[str]) -> tuple[str, str, float]:
+    numeric = frame[fields].apply(pd.to_numeric, errors="coerce")
+    correlation = numeric.corr()
+    strongest = (fields[0], fields[1], 0.0)
+    for left_index, left in enumerate(fields):
+        for right in fields[left_index + 1 :]:
+            value = correlation.loc[left, right]
+            if pd.notna(value) and abs(float(value)) > abs(strongest[2]):
+                strongest = (left, right, float(value))
+    return strongest
+
+
+def safe_skew(values: pd.Series) -> float:
+    skewness = float(values.skew()) if len(values) >= 3 else 0.0
+    return skewness if math.isfinite(skewness) else 0.0
+
+
+def numeric_outlier_ratio(values: pd.Series) -> float:
+    if values.empty:
+        return 0.0
+    q1 = float(values.quantile(0.25))
+    q3 = float(values.quantile(0.75))
+    iqr = q3 - q1
+    if iqr == 0:
+        return 0.0
+    outliers = (values < q1 - 1.5 * iqr) | (values > q3 + 1.5 * iqr)
+    return float(outliers.mean())
+
+
+def distribution_interest(raw_values: pd.Series) -> float:
+    values = pd.to_numeric(raw_values, errors="coerce").dropna().astype(float)
+    if values.empty:
+        return 0.0
+    skew_interest = min(abs(safe_skew(values)) / 2, 1.0)
+    outlier_interest = min(numeric_outlier_ratio(values) * 8, 1.0)
+    return skew_interest * 0.65 + outlier_interest * 0.35
 
 
 def regression(frame: pd.DataFrame, feature: str, target: str) -> dict[str, Any]:

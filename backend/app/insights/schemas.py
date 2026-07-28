@@ -14,6 +14,22 @@ from pydantic import (
 Locale = Literal["zh-CN", "en-US"]
 
 
+class ChartRecommendation(BaseModel):
+    id: str
+    rank: int = Field(ge=1)
+    type: Literal["line", "bar", "scatter", "histogram"]
+    title: str
+    reason: str
+    score: int = Field(ge=0, le=100)
+    confidence: Literal["high", "medium", "exploratory"]
+    signals: list[str]
+    x_field: str
+    y_field: str | None = None
+    categories: list[str] | None = None
+    series: list[float] | None = None
+    points: list[tuple[float, float]] | None = None
+
+
 class ExploreResponse(BaseModel):
     dataset_id: str
     revision: int
@@ -21,7 +37,7 @@ class ExploreResponse(BaseModel):
     correlations: dict[str, Any]
     distributions: list[dict[str, Any]]
     anomalies: list[dict[str, Any]]
-    charts: list[dict[str, Any]]
+    charts: list[ChartRecommendation]
 
 
 class ExploreFilter(BaseModel):
@@ -85,7 +101,7 @@ class AskResponse(BaseModel):
     model: str | None = None
     answer: str
     evidence: list[str]
-    suggested_chart: dict[str, Any] | None = None
+    suggested_chart: ChartRecommendation | None = None
 
 
 class AdvancedRequest(BaseModel):
