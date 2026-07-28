@@ -13,7 +13,6 @@ type Fetcher = typeof fetch;
 export interface ApiClientOptions {
   baseUrl: string;
   fetcher?: Fetcher;
-  accessToken?: string | (() => string | undefined);
 }
 
 export interface ApiClient {
@@ -22,18 +21,14 @@ export interface ApiClient {
     params?: Record<string, string | number | boolean | null | undefined>,
   ): Promise<TResponse>;
   post<TResponse>(path: string, body?: unknown): Promise<TResponse>;
-  postBlob(
+  download(
     path: string,
-    body?: unknown,
     params?: Record<string, string | number | boolean | null | undefined>,
   ): Promise<{ blob: Blob; fileName: string | null }>;
   patch<TResponse>(path: string, body?: unknown): Promise<TResponse>;
   delete<TResponse>(path: string): Promise<TResponse>;
   postForm<TResponse>(path: string, body: FormData): Promise<TResponse>;
 }
-
-export const ACCESS_TOKEN_STORAGE_KEY = "data-analyse.access-token";
-const DEV_AUTH_DISABLED_STORAGE_KEY = "data-analyse.dev-auth-disabled";
 
 function joinUrl(
   baseUrl: string,
@@ -67,16 +62,8 @@ async function readErrorMessage(response: Response): Promise<string> {
 export function createApiClient({
   baseUrl,
   fetcher = fetch,
-  accessToken,
 }: ApiClientOptions): ApiClient {
-  function jsonHeaders() {
-    const resolvedToken =
-      typeof accessToken === "function" ? accessToken() : accessToken;
-    return {
-      Accept: "application/json",
-      ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
-    };
-  }
+  const jsonHeaders = () => ({ Accept: "application/json" });
 
   return {
     async get<TResponse>(
@@ -104,18 +91,13 @@ export function createApiClient({
       return readJsonResponse<TResponse>(response);
     },
 
-    async postBlob(
+    async download(
       path: string,
-      body?: unknown,
       params?: Record<string, string | number | boolean | null | undefined>,
     ): Promise<{ blob: Blob; fileName: string | null }> {
       const response = await fetcher(joinUrl(baseUrl, path, params), {
-        body: body === undefined ? undefined : JSON.stringify(body),
-        headers: {
-          ...jsonHeaders(),
-          "Content-Type": "application/json",
-        },
-        method: "POST",
+        headers: jsonHeaders(),
+        method: "GET",
       });
 
       if (!response.ok) {
@@ -181,35 +163,16 @@ async function readJsonResponse<TResponse>(
     throw new ApiError(await readErrorMessage(response), response.status);
   }
 
+  if (response.status === 204) {
+    return undefined as TResponse;
+  }
   return (await response.json()) as TResponse;
 }
 
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+
 export const apiClient = createApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api",
-  accessToken: resolveAccessToken,
+  baseUrl: API_BASE_URL,
   fetcher: (...args) => fetch(...args),
 });
-
-export function storeAccessToken(accessToken: string): void {
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
-  window.localStorage.removeItem(DEV_AUTH_DISABLED_STORAGE_KEY);
-}
-
-export function clearAccessToken(): void {
-  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
-  window.localStorage.setItem(DEV_AUTH_DISABLED_STORAGE_KEY, "true");
-}
-
-function resolveAccessToken(): string | undefined {
-  const storedToken = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-  if (storedToken) {
-    return storedToken;
-  }
-  if (window.localStorage.getItem(DEV_AUTH_DISABLED_STORAGE_KEY)) {
-    return undefined;
-  }
-  return (
-    import.meta.env.VITE_DEV_ACCESS_TOKEN ??
-    (import.meta.env.DEV ? "local-dev-token-usr_admin" : undefined)
-  );
-}

@@ -6,6 +6,8 @@ __pycache__/
 *.egg-info/
 .eggs/
 .pytest_cache/
+.pytest_tmp/
+.test-runs/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -64,3 +66,4 @@ worktrees/
 # Local agent state
 .agents/
 .codex/
+.codex-pytest*/

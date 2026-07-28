@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from functools import lru_cache
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -14,23 +15,30 @@ def import_models() -> None:
     import app.models  # noqa: F401
 
 
-def get_engine(database_url: str | None = None) -> Engine:
-    settings = get_settings()
-    return create_engine(database_url or settings.database_url, pool_pre_ping=True)
+@lru_cache
+def get_engine() -> Engine:
+    database_url = get_settings().database_url
+    connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    return create_engine(database_url, connect_args=connect_args, pool_pre_ping=True)
 
 
-def get_session_factory(engine: Engine | None = None) -> sessionmaker[Session]:
-    return sessionmaker(
-        bind=engine or get_engine(),
-        autocommit=False,
-        autoflush=False,
-        expire_on_commit=False,
-    )
+@lru_cache
+def get_session_factory() -> sessionmaker[Session]:
+    return sessionmaker(bind=get_engine(), autoflush=False, expire_on_commit=False)
+
+
+def init_database() -> None:
+    import_models()
+    Base.metadata.create_all(get_engine())
+
+
+def reset_database_bindings() -> None:
+    get_session_factory.cache_clear()
+    get_engine.cache_clear()
 
 
 def get_db_session() -> Generator[Session]:
-    session_factory = get_session_factory()
-    session = session_factory()
+    session = get_session_factory()()
     try:
         yield session
     finally:

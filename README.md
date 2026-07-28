@@ -1,95 +1,102 @@
-# Data Analysis System
+# Vibe Data Universe
 
-A professional, usable, and extensible data analysis workspace built for individuals and small teams. The project starts as a modular monolith and follows a clear path toward a larger data platform without introducing enterprise complexity too early.
+面向大学生、科研人员与数据分析初学者的数据探索系统。系统以本地文件为唯一数据接入方式，把上传、画像、清洗、分析、3D 粒子叙事和报告导出组织成一条连续工作流。
 
-## Current State
+旧系统的账户、项目、权限、外部数据库连接、SQL 工作台、任务中心、治理中心和传统仪表盘已移除；当前代码与数据模型只服务于新系统。
 
-The repository contains a demo-ready MVP foundation with a working end-to-end data path:
+## 核心工作流
 
 ```text
-CSV / Excel
-  -> retained source and preview
-  -> PostgreSQL-backed dataset
-  -> visual cleaning / ETL
-  -> statistics / metrics / dimension analysis / linear model
-  -> reusable data view and ECharts chart
-  -> dashboard / report / data screen / export
-  -> task, audit, and lineage records
+CSV / Excel / JSON / TXT
+  -> 自动画像与质量评分
+  -> 版本化清洗
+  -> EDA / 中文问数 / 高级统计
+  -> 3D 数据粒子叙事
+  -> 故事流编辑
+  -> HTML / PDF 导出
 ```
 
-Implemented product surfaces include:
+## 产品界面
 
-- Local CSV/Excel import with durable source retention, preview recovery, editable fields, and import history.
-- Formal datasets materialized as physical PostgreSQL tables with pagination and quality profiling.
-- Saveable cleaning recipes executed into derived datasets.
-- Dataset analysis workbench with filters, grouped metrics, descriptive statistics, correlation, linear regression, and CSV/Excel export.
-- Project-scoped read-only SQL with reusable Data View materialization.
-- ECharts chart configuration plus dashboard, free-report, and data-screen layout modes.
-- Task Center with status, errors, related-resource links, and synchronous retry for supported operations.
-- Governance Center with recoverable archive/restore for core resources, focused upstream/downstream dependencies, operation-log search, and project-member role management.
-- Expiring signed sessions, salted password hashing with legacy credential upgrade, development-token isolation, and owner-controlled collaboration workflows.
+- **数据宇宙**：每一行数据映射为一个 3D 粒子，支持旋转、缩放、自动巡航、轴与颜色映射、粒子检查和 AI 解说。
+- **数据工作台**：拖拽上传四类文件，查看分页数据、字段画像、质量问题与修订历史，组合去重、缺失值处理和异常标记。
+- **分析实验室**：自动 EDA、智能图表推荐、图表点击联动、相关性矩阵、异常检测、中文问数、回归、Welch 检验与 KMeans 聚类。
+- **故事编辑器**：将指标、图表、质量与叙述编排成故事流，支持保存、重排和 HTML/PDF 导出。
+- **协作画布**：WebSocket 同步在线状态、图表筛选、粒子映射、清洗和故事操作。
 
-Detailed status and known limitations are tracked in [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md). The active delivery sequence and acceptance criteria live in [`docs/NEXT_PHASE_PLAN.md`](docs/NEXT_PHASE_PLAN.md).
+## 技术架构
 
-The current product surface is intentionally local-file-first. Existing external PostgreSQL/MySQL backend foundations remain in the repository for future reactivation, but the Data Sources UI does not expose them in this stage.
+- 前端：React、TypeScript、Vite、Zustand、TanStack Query、Three.js、React Three Fiber、ECharts。
+- 后端：FastAPI、SQLAlchemy、Pydantic、Pandas、NumPy、SciPy、Scikit-learn、ReportLab。
+- 数据：SQLite 保存工作区元数据，本地文件系统保存数据修订与导出文件。
+- AI：默认统计引擎可离线回答；配置大模型 API 后自动切换为外部解说模式。
 
-## Technology
+详细的重建范围和验收映射见 [docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md)。原始需求文档保留在 [docs/instruction.md](docs/instruction.md)。
 
-- Backend: Python 3.13, FastAPI, SQLAlchemy, Alembic, Pydantic, PostgreSQL.
-- Data processing: current tabular parsing foundation with Pandas/Polars reserved for broader processing milestones.
-- Frontend: React, TypeScript, Vite, TanStack Query, Zustand, Tailwind CSS, ECharts.
-- Development deployment: Docker Compose with PostgreSQL, Redis, backend, and frontend services.
+## 本地启动
 
-## Run The Demo
+需要 Python 3.13、Node.js 24 和 `uv`。
 
-Prerequisites: Docker Desktop with Docker Compose.
+后端：
 
 ```powershell
-docker compose up -d --build
-docker compose exec backend python -m alembic upgrade head
-docker compose exec backend python /demo/scripts/seed_demo.py
-docker compose exec backend python /demo/scripts/validate_release.py --project-id prj_demo
+cd backend
+uv sync --extra dev
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:5173` and use the seeded project `prj_demo`.
-
-The seed is idempotent and creates synthetic demo resources for the full workflow. See [`docs/DEMO_GUIDE.md`](docs/DEMO_GUIDE.md) for direct page links and the expected walkthrough.
-
-## Local Development
-
-Copy `.env.example` to `.env` and replace every placeholder before using local services outside the default Docker demo environment.
-
-Setup, migration, test, and troubleshooting commands are documented in [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md). Backend- and frontend-specific notes are also available in [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md).
-
-## Validation
+前端：
 
 ```powershell
-backend\.venv\Scripts\python -m ruff check backend
-backend\.venv\Scripts\python -m pytest backend\tests -q
 cd frontend
-npm.cmd run lint
-npm.cmd test -- --run
-npm.cmd run build
+npm ci
+npm run dev
 ```
 
-GitHub Actions runs the equivalent backend and frontend checks for pushes and pull requests.
+打开 `http://127.0.0.1:5173`。首次进入且没有数据集时，系统会自动生成一份校园学习节律演示数据；也可以上传 [examples/student_learning_rhythm.csv](examples/student_learning_rhythm.csv)。
 
-## Security And Privacy
+## Docker 启动
 
-The tracked demo data is synthetic. Runtime uploads, local storage, `.env` files, credentials, database files, and private key formats are ignored by Git.
+```powershell
+docker compose up --build
+```
 
-External database passwords are encrypted at rest with the configured `EXTERNAL_CONNECTION_ENCRYPTION_KEY`. User passwords use salted PBKDF2 hashes, legacy local passwords upgrade after successful authentication, and issued sessions are signed and time-limited. Internet-facing deployments still require TLS, rate limiting, password recovery, MFA or equivalent policy, and managed secret distribution. Review [`SECURITY.md`](SECURITY.md) and [`docs/DEPLOYMENT_OPERATIONS.md`](docs/DEPLOYMENT_OPERATIONS.md) before non-local use.
+前端地址为 `http://127.0.0.1:5173`，后端 API 文档为 `http://127.0.0.1:8000/docs`。运行数据保存在 `backend_storage` 卷中。
 
-## Project Direction
+## 可选大模型
 
-The main product and engineering constraints live in [`docs/PROJECT_MEMORY.md`](docs/PROJECT_MEMORY.md), with the historical MVP roadmap in [`docs/MVP_ROADMAP.md`](docs/MVP_ROADMAP.md) and the active follow-up plan in [`docs/NEXT_PHASE_PLAN.md`](docs/NEXT_PHASE_PLAN.md).
+复制 `.env.example` 为 `.env`，只在需要外部 AI 解说时设置：
 
-The immediate goal remains a complete personal/small-team data development and analysis system. Enterprise features such as distributed workers, scheduled sync, API sources, field/row permissions, full lineage visualization, multi-tenancy, and Kubernetes remain later-stage work.
+```text
+LLM_API_KEY=...
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-5-mini
+LLM_API_STYLE=responses
+```
 
-## Contributing
+`LLM_API_STYLE` 可设为 `responses` 或 `chat_completions`。也可以在“数据宇宙”或“分析实验室”的 AI 解说员中打开模型设置，选择 OpenAI、DeepSeek、通义千问或自定义兼容服务。界面设置优先于环境默认值；API Key 仅保留在当前应用会话，不写入浏览器本地存储、数据库或分析历史。
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). Keep contributions scoped, preserve traceability, and use synthetic or anonymized data in tests and examples.
+未启用外部模型时，中文问数仍使用本地统计证据引擎工作。无论使用哪种模式，原始数据行都不会发送给外部模型。
 
-## License
+## 验证
 
-No open-source license has been selected yet. The repository is public for evaluation, but reuse and redistribution rights should be treated as reserved until a license is added.
+```powershell
+cd backend
+uv run ruff check app tests
+uv run pytest
+
+cd ..\frontend
+npm run lint
+npm test -- --run
+npm run build
+npm run format
+```
+
+后端端到端测试覆盖四种文件接入、画像、版本化清洗、EDA、联动筛选、中文问数、高级统计、粒子数据、WebSocket、故事编辑与两类导出。
+
+## 数据边界
+
+- 数据接入仅支持 CSV、Excel（`.xlsx` / `.xls`）、JSON 和 TXT。
+- 默认单文件上限 128 MiB、50 万行、300 列，可通过环境变量调整。
+- 上传文件、SQLite 数据库、导出报告和 `.env` 均被 Git 忽略。

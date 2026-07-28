@@ -1,199 +1,218 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  Cloud,
+  Activity,
+  ChevronDown,
   Languages,
-  LogOut,
-  Search,
-  Sparkles,
+  Moon,
+  Sun,
+  Upload,
+  Users,
 } from "lucide-react";
 import { useEffect } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-import { useCurrentUser } from "../features/auth/useCurrentUser";
-import { logout } from "../features/auth/api";
+import { CollaborationProvider } from "../features/collaboration/CollaborationContext";
+import { useCollaboration } from "../features/collaboration/collaborationState";
 import { useWorkspaceStore } from "../features/workspace/workspaceStore";
-import { localize, useI18n } from "../i18n";
+import { useI18n } from "../i18n";
+import { queryKeys, vibeApi } from "../lib/vibeApi";
 import { navigationItems } from "./navigation";
 
 export function AppShell() {
+  return (
+    <CollaborationProvider>
+      <ShellFrame />
+    </CollaborationProvider>
+  );
+}
+
+function ShellFrame() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const currentUser = useCurrentUser();
-  const { language, setLanguage, t } = useI18n();
-  const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
-  const toggleSidebar = useWorkspaceStore((state) => state.toggleSidebar);
-  const activeItem =
-    navigationItems.find((item) =>
-      item.path === "/"
-        ? location.pathname === "/"
-        : location.pathname.startsWith(item.path),
-    ) ?? navigationItems[0];
+  const activeDatasetId = useWorkspaceStore((state) => state.activeDatasetId);
+  const setActiveDataset = useWorkspaceStore((state) => state.setActiveDataset);
+  const theme = useWorkspaceStore((state) => state.theme);
+  const toggleTheme = useWorkspaceStore((state) => state.toggleTheme);
+  const { formatNumber, language, setLanguage, t } = useI18n();
+  const { connected, online, recentEvent } = useCollaboration();
+  const datasets = useQuery({
+    queryKey: queryKeys.datasets,
+    queryFn: vibeApi.listDatasets,
+  });
 
   useEffect(() => {
-    document.title = t("雾流数据台", "Mistflow Data Atelier");
-  }, [t]);
+    if (!datasets.data) return;
+    const exists = datasets.data.some(
+      (dataset) => dataset.id === activeDatasetId,
+    );
+    if (!exists) {
+      setActiveDataset(datasets.data[0]?.id ?? null);
+    }
+  }, [activeDatasetId, datasets.data, setActiveDataset]);
 
-  function handleLogout() {
-    logout();
-    queryClient.removeQueries({ queryKey: ["auth"] });
-    navigate("/login", { replace: true });
-  }
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = t("app.title");
+  }, [language, t]);
+
+  const currentNavigation =
+    navigationItems.find((item) =>
+      item.end
+        ? location.pathname === item.path
+        : location.pathname.startsWith(item.path),
+    ) ?? navigationItems[0];
+  const CurrentIcon = currentNavigation.icon;
 
   return (
-    <div className={sidebarCollapsed ? "fluid-app is-collapsed" : "fluid-app"}>
-      <AmbientBackdrop />
-      <aside className="sidebar" aria-label={t("主导航", "Main navigation")}>
-        <NavLink
-          className="brand-lockup"
-          to="/"
-          aria-label={t("雾流数据工作台首页", "Mistflow data workspace home")}
-        >
-          <span className="brand-mark">
-            <Sparkles size={18} strokeWidth={1.8} />
-          </span>
+    <div className="app-shell" data-language={language} data-theme={theme}>
+      <aside className="app-rail" aria-label={t("nav.main")}>
+        <NavLink className="brand-mark" to="/" aria-label="Vibe Data Universe">
+          <span className="brand-pulse" aria-hidden="true" />
           <span className="brand-copy">
-            <strong>{t("雾流", "Mistflow")}</strong>
-            <span>DATA ATELIER</span>
+            <strong>VIBE</strong>
+            <small>DATA UNIVERSE</small>
           </span>
         </NavLink>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          type="button"
-          aria-label={
-            sidebarCollapsed
-              ? t("展开侧边栏", "Expand sidebar")
-              : t("折叠侧边栏", "Collapse sidebar")
+        <nav className="rail-navigation">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                className={({ isActive }) =>
+                  `rail-link${isActive ? " is-active" : ""}`
+                }
+                end={item.end}
+                to={item.path}
+                title={`${t(item.labelKey)} · ${t(item.descriptionKey)}`}
+              >
+                <Icon aria-hidden="true" size={20} strokeWidth={1.8} />
+                <span>
+                  <strong>{t(item.labelKey)}</strong>
+                  <small>{t(item.descriptionKey)}</small>
+                </span>
+              </NavLink>
+            );
+          })}
+        </nav>
+        <div
+          className="rail-status"
+          title={
+            connected
+              ? t("shell.online", { count: online })
+              : t("shell.collaborationOffline")
           }
         >
-          {sidebarCollapsed ? (
-            <ChevronRight size={17} />
-          ) : (
-            <ChevronLeft size={17} />
-          )}
-        </button>
-
-        <nav
-          className="sidebar-nav"
-          aria-label={t("数据工作台导航", "Data workspace navigation")}
-        >
-          <p className="nav-caption">{t("数据工作台", "Data workspace")}</p>
-          {navigationItems.map(({ label, path, icon: Icon }) => (
-            <NavLink
-              className={({ isActive }) =>
-                isActive ? "nav-item is-active" : "nav-item"
-              }
-              end={path === "/"}
-              key={path}
-              title={sidebarCollapsed ? localize(label, language) : undefined}
-              to={path}
-            >
-              <Icon size={18} strokeWidth={1.75} />
-              <span>{localize(label, language)}</span>
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="storage-orb">
-            <Cloud size={17} />
-          </div>
-          <div className="storage-copy">
-            <span>{t("本地对象存储", "Local object storage")}</span>
-            <strong>{t("72.8% 可用", "72.8% available")}</strong>
+          <span className={connected ? "status-dot is-online" : "status-dot"} />
+          <div>
+            <strong>
+              {connected
+                ? t("shell.online", { count: online })
+                : t("shell.localMode")}
+            </strong>
+            <small>
+              {recentEvent?.actor
+                ? t("shell.recentAction", { actor: recentEvent.actor })
+                : t("shell.analysisCanvas")}
+            </small>
           </div>
         </div>
       </aside>
 
-      <main className="workspace">
-        <header className="topbar">
-          <div className="crumbs">
-            <span>{t("云析空间", "Analytics space")}</span>
-            <i />
-            <strong>{localize(activeItem.label, language)}</strong>
+      <header className="app-topbar">
+        <div className="view-identity">
+          <CurrentIcon size={18} aria-hidden="true" />
+          <span>{t(currentNavigation.labelKey)}</span>
+        </div>
+        <div className="dataset-select-wrap">
+          <span className="dataset-select-label">
+            {t("shell.currentDataset")}
+          </span>
+          <select
+            aria-label={t("shell.selectDataset")}
+            disabled={!datasets.data?.length}
+            onChange={(event) => setActiveDataset(event.target.value || null)}
+            value={activeDatasetId ?? ""}
+          >
+            {!datasets.data?.length && (
+              <option value="">{t("shell.awaitingDataset")}</option>
+            )}
+            {datasets.data?.map((dataset) => (
+              <option key={dataset.id} value={dataset.id}>
+                {t("shell.datasetRows", {
+                  name: dataset.name,
+                  count: formatNumber(dataset.row_count),
+                })}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={15} aria-hidden="true" />
+        </div>
+        <div className="topbar-actions">
+          <span className="online-chip" title={t("shell.onlineCount")}>
+            {connected ? <Users size={15} /> : <Activity size={15} />}
+            {connected ? online : t("shell.local")}
+          </span>
+          <div
+            aria-label={t("language.control")}
+            className="language-switcher"
+            role="group"
+          >
+            <Languages aria-hidden="true" size={14} />
+            <button
+              aria-label={t("language.switchChinese")}
+              aria-pressed={language === "zh-CN"}
+              className={language === "zh-CN" ? "is-active" : ""}
+              onClick={() => setLanguage("zh-CN")}
+              title={t("language.switchChinese")}
+              type="button"
+            >
+              中
+            </button>
+            <button
+              aria-label={t("language.switchEnglish")}
+              aria-pressed={language === "en-US"}
+              className={language === "en-US" ? "is-active" : ""}
+              onClick={() => setLanguage("en-US")}
+              title={t("language.switchEnglish")}
+              type="button"
+            >
+              EN
+            </button>
           </div>
-          <div className="topbar-actions">
-            <div
-              className="language-switcher"
-              role="group"
-              aria-label={t("界面语言", "Interface language")}
-            >
-              <Languages size={15} aria-hidden="true" />
-              <button
-                className={language === "zh-CN" ? "is-active" : undefined}
-                onClick={() => setLanguage("zh-CN")}
-                type="button"
-                aria-pressed={language === "zh-CN"}
-              >
-                中文
-              </button>
-              <button
-                className={language === "en-US" ? "is-active" : undefined}
-                onClick={() => setLanguage("en-US")}
-                type="button"
-                aria-pressed={language === "en-US"}
-              >
-                EN
-              </button>
-            </div>
-            <button
-              className="icon-button"
-              aria-label={t("搜索", "Search")}
-              type="button"
-            >
-              <Search size={18} />
-            </button>
-            <button
-              className="icon-button has-dot"
-              aria-label={t("通知", "Notifications")}
-              type="button"
-            >
-              <Bell size={18} />
-            </button>
-            <button
-              className="icon-button"
-              aria-label={t("退出登录", "Sign out")}
-              onClick={handleLogout}
-              type="button"
-            >
-              <LogOut size={18} />
-            </button>
-            <div className="user-chip">
-              <div className="avatar">
-                {currentUser?.display_name.slice(0, 1).toUpperCase() ?? "林"}
-              </div>
-              <div>
-                <strong>{currentUser?.display_name ?? "林予安"}</strong>
-                <span>
-                  {currentUser?.is_platform_admin
-                    ? t("平台管理员", "Platform administrator")
-                    : t("分析负责人", "Analytics lead")}
-                </span>
-              </div>
-            </div>
-          </div>
-        </header>
+          <NavLink className="icon-button" to="/data" title={t("shell.upload")}>
+            <Upload size={18} />
+          </NavLink>
+          <button
+            className="icon-button"
+            onClick={toggleTheme}
+            title={t("shell.toggleTheme")}
+            type="button"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+      </header>
+
+      <main className="app-content">
         <Outlet />
       </main>
-    </div>
-  );
-}
 
-function AmbientBackdrop() {
-  return (
-    <div className="ambient" aria-hidden="true">
-      <span className="glow glow-one" />
-      <span className="glow glow-two" />
-      <span className="glow glow-three" />
-      <i className="particle particle-one" />
-      <i className="particle particle-two" />
-      <i className="particle particle-three" />
-      <i className="particle particle-four" />
+      <nav className="mobile-navigation" aria-label={t("nav.mobile")}>
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              className={({ isActive }) => (isActive ? "is-active" : "")}
+              end={item.end}
+              to={item.path}
+            >
+              <Icon size={19} aria-hidden="true" />
+              <span>{t(item.shortLabelKey)}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
     </div>
   );
 }

@@ -1,57 +1,27 @@
 # Docker Development
 
-Docker Compose provides the local development services for the Data Analysis System.
-
-## Services
-
-- `postgres`: PostgreSQL database.
-- `redis`: reserved for task center/cache work.
-- `backend`: FastAPI development server.
-- `frontend`: Vite React development server.
-- `worker`: reserved placeholder under the `worker` profile.
-
-## Commands
-
-From the repository root:
+Compose 只启动新系统所需的 FastAPI 后端和 Vite 前端。SQLite、数据修订与报告导出共同保存在 `backend_storage` 卷中，不需要 PostgreSQL、Redis 或任务 worker。
 
 ```powershell
 docker compose up --build
 ```
 
-Run in the background:
+本地地址：
 
-```powershell
-docker compose up -d --build
+```text
+Frontend: http://127.0.0.1:5173
+Backend:  http://127.0.0.1:8000
+API docs: http://127.0.0.1:8000/docs
 ```
 
-Stop services:
+停止服务：
 
 ```powershell
 docker compose down
 ```
 
-Remove service volumes when you intentionally want a clean database:
+只有明确需要清空所有上传数据、修订、故事与导出时，才删除持久卷：
 
 ```powershell
 docker compose down -v
-```
-
-## Image Pull Notes
-
-Docker Desktop must be able to pull images from Docker Hub, including:
-
-- `postgres:17-alpine`
-- `redis:8-alpine`
-- `python:3.13-slim`
-- `node:24-alpine`
-
-If `docker compose up --build` fails while pulling images, configure Docker Desktop proxy or registry mirror settings, then run the command again.
-
-## Local URLs
-
-```text
-Frontend: http://127.0.0.1:5173
-Backend:  http://127.0.0.1:8000/api/health
-Postgres: 127.0.0.1:5432
-Redis:    127.0.0.1:6379
 ```

@@ -1,1 +1,0 @@
-"""Cleaning recipe domain module."""

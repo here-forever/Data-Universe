@@ -1,15 +1,8 @@
 from fastapi import APIRouter
 
-from app.core.config import get_settings
-
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["system"])
 
 
 @router.get("/health")
-def health_check() -> dict[str, str]:
-    settings = get_settings()
-    return {
-        "status": "ok",
-        "service": settings.app_name,
-        "environment": settings.app_env,
-    }
+def health() -> dict[str, str]:
+    return {"status": "ok", "system": "vibe-data-universe"}

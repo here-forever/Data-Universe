@@ -1,1 +1,0 @@
-"""Data source application module."""

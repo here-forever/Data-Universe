@@ -12,4 +12,5 @@
 ## Data And Security
 
 - [ ] No `.env`, credentials, uploaded user data, database dumps, or private endpoints are included
-- [ ] Important data operations keep task, audit, and lineage behavior intact
+- [ ] File-type, row-count, column-count, and upload-size limits remain enforced
+- [ ] Dataset cleaning creates a new revision instead of overwriting the source

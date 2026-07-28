@@ -1,72 +1,45 @@
-import {
-  BarChart3,
-  BrushCleaning,
-  ChartNoAxesCombined,
-  Database,
-  FileUp,
-  Grid2X2,
-  LayoutDashboard,
-  ListChecks,
-  ScrollText,
-  ShieldCheck,
-  SquareTerminal,
-} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BookOpen, FlaskConical, Orbit, TableProperties } from "lucide-react";
 
-import type { LocalizedText } from "../i18n";
+import type { TranslationKey } from "../i18n";
 
 export interface NavigationItem {
-  label: LocalizedText;
+  labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
+  shortLabelKey: TranslationKey;
   path: string;
   icon: LucideIcon;
+  end?: boolean;
 }
 
 export const navigationItems: NavigationItem[] = [
-  { label: { zh: "总览", en: "Overview" }, path: "/", icon: Grid2X2 },
   {
-    label: { zh: "数据源", en: "Data sources" },
-    path: "/data-sources",
-    icon: Database,
+    labelKey: "nav.universe",
+    descriptionKey: "nav.universeDescription",
+    shortLabelKey: "nav.universeShort",
+    path: "/",
+    icon: Orbit,
+    end: true,
   },
   {
-    label: { zh: "数据导入", en: "Import data" },
-    path: "/import",
-    icon: FileUp,
+    labelKey: "nav.data",
+    descriptionKey: "nav.dataDescription",
+    shortLabelKey: "nav.dataShort",
+    path: "/data",
+    icon: TableProperties,
   },
   {
-    label: { zh: "数据集", en: "Datasets" },
-    path: "/datasets",
-    icon: ListChecks,
+    labelKey: "nav.analysis",
+    descriptionKey: "nav.analysisDescription",
+    shortLabelKey: "nav.analysisShort",
+    path: "/analysis",
+    icon: FlaskConical,
   },
   {
-    label: { zh: "数据清洗", en: "Data cleaning" },
-    path: "/cleaning",
-    icon: BrushCleaning,
-  },
-  {
-    label: { zh: "分析工作台", en: "Analytics" },
-    path: "/analytics",
-    icon: ChartNoAxesCombined,
-  },
-  {
-    label: { zh: "SQL 工作台", en: "SQL workspace" },
-    path: "/sql",
-    icon: SquareTerminal,
-  },
-  { label: { zh: "图表分析", en: "Charts" }, path: "/charts", icon: BarChart3 },
-  {
-    label: { zh: "仪表盘", en: "Dashboards" },
-    path: "/dashboards",
-    icon: LayoutDashboard,
-  },
-  {
-    label: { zh: "任务中心", en: "Task center" },
-    path: "/tasks",
-    icon: ScrollText,
-  },
-  {
-    label: { zh: "治理中心", en: "Governance" },
-    path: "/governance",
-    icon: ShieldCheck,
+    labelKey: "nav.stories",
+    descriptionKey: "nav.storiesDescription",
+    shortLabelKey: "nav.storiesShort",
+    path: "/stories",
+    icon: BookOpen,
   },
 ];

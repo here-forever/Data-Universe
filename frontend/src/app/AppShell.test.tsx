@@ -1,69 +1,107 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, test } from "vitest";
+import type { ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useWorkspaceStore } from "../features/workspace/workspaceStore";
-import { resetLanguageForTests } from "../i18n";
+import { type DatasetSummary, vibeApi } from "../lib/vibeApi";
 import { renderWithProviders } from "../test/test-utils";
 import { AppShell } from "./AppShell";
 
+vi.mock("../features/collaboration/CollaborationContext", () => ({
+  CollaborationProvider: ({ children }: { children: ReactNode }) => children,
+}));
+
+vi.mock("../features/collaboration/collaborationState", () => ({
+  useCollaboration: () => ({
+    connected: false,
+    online: 0,
+    recentEvent: null,
+  }),
+}));
+
+const dataset: DatasetSummary = {
+  id: "campus-rhythm",
+  name: "校园节律",
+  source_filename: "campus-rhythm.csv",
+  file_type: "csv",
+  row_count: 240,
+  column_count: 8,
+  active_revision: 1,
+  quality_score: 96,
+  created_at: "2026-07-27T00:00:00Z",
+  updated_at: "2026-07-27T00:00:00Z",
+};
+
 describe("AppShell", () => {
   beforeEach(() => {
-    resetLanguageForTests();
-    useWorkspaceStore.setState({ sidebarCollapsed: false });
+    window.localStorage.clear();
+    useWorkspaceStore.setState({
+      activeDatasetId: null,
+      language: "zh-CN",
+      theme: "dark",
+    });
+    vi.spyOn(vibeApi, "listDatasets").mockResolvedValue([dataset]);
   });
 
-  test("switches the full shell language and persists the preference", async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("只呈现新系统的四个工作区入口", () => {
+    renderWithProviders(<AppShell />);
+
+    expect(screen.getByRole("link", { name: /数据宇宙/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /数据工作台/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /分析实验室/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /故事编辑器/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("SQL 工作台")).not.toBeInTheDocument();
+    expect(screen.queryByText("治理中心")).not.toBeInTheDocument();
+  });
+
+  test("加载数据集并切换明暗模式", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<AppShell />);
+
+    expect(
+      await screen.findByRole("option", { name: "校园节律 · 240 行" }),
+    ).toBeInTheDocument();
+    expect(useWorkspaceStore.getState().activeDatasetId).toBe(dataset.id);
+
+    await user.click(screen.getByRole("button", { name: "切换明暗模式" }));
+    expect(container.querySelector(".app-shell")).toHaveAttribute(
+      "data-theme",
+      "light",
+    );
+  });
+
+  test("切换并持久化英文界面", async () => {
     const user = userEvent.setup();
     renderWithProviders(<AppShell />);
 
-    await user.click(screen.getByRole("button", { name: "EN" }));
+    await user.click(screen.getByRole("button", { name: "Switch to English" }));
 
-    expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
+    const primaryNavigation = screen.getByRole("complementary", {
+      name: "Primary navigation",
+    });
     expect(
-      screen.getByRole("link", { name: "Data sources" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Analytics lead")).toBeInTheDocument();
-    expect(document.title).toBe("Mistflow Data Atelier");
-    expect(document.documentElement.lang).toBe("en-US");
-    expect(window.localStorage.getItem("data-analyse.language")).toBe("en-US");
-
-    await user.click(screen.getByRole("button", { name: "中文" }));
-    expect(screen.getByRole("link", { name: "总览" })).toBeInTheDocument();
-    expect(document.title).toBe("雾流数据台");
-    expect(document.documentElement.lang).toBe("zh-CN");
-  });
-
-  test("renders the unified data workspace navigation", () => {
-    renderWithProviders(<AppShell />);
-
-    expect(
-      screen.getByRole("link", { name: "雾流数据工作台首页" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "总览" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "数据源" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "SQL 工作台" }),
+      within(primaryNavigation).getByRole("link", {
+        name: /^Data Universe\s*Particle stories$/,
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "分析工作台" }),
+      await screen.findByRole("option", { name: "校园节律 · 240 rows" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "任务中心" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "治理中心" })).toBeInTheDocument();
+    expect(useWorkspaceStore.getState().language).toBe("en-US");
+    expect(document.documentElement).toHaveAttribute("lang", "en-US");
     expect(
-      screen.getByRole("button", { name: "退出登录" }),
-    ).toBeInTheDocument();
-  });
-
-  test("collapses the navigation while keeping links accessible", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<AppShell />);
-
-    await user.click(screen.getByRole("button", { name: "折叠侧边栏" }));
-
-    expect(
-      screen.getByRole("button", { name: "展开侧边栏" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "数据集" })).toBeInTheDocument();
+      window.localStorage.getItem("vibe-data-universe.workspace"),
+    ).toContain('"language":"en-US"');
   });
 });

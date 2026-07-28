@@ -1,36 +1,4 @@
 services:
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-data_analysis_system}
-      POSTGRES_USER: ${POSTGRES_USER:-data_analysis_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-data_analysis_password}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:8-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: .
@@ -38,38 +6,24 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-true}
-      APP_SECRET_KEY: ${APP_SECRET_KEY:-local-development-only-secret}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      PASSWORD_HASH_SCHEME: ${PASSWORD_HASH_SCHEME:-pbkdf2_sha256}
-      PASSWORD_HASH_ITERATIONS: ${PASSWORD_HASH_ITERATIONS:-120000}
-      EXTERNAL_CONNECTION_ENCRYPTION_KEY: ${EXTERNAL_CONNECTION_ENCRYPTION_KEY:-local-development-only-credential-key}
       BACKEND_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-data_analysis_user}:${POSTGRES_PASSWORD:-data_analysis_password}@postgres:5432/${POSTGRES_DB:-data_analysis_system}
-      REDIS_URL: redis://redis:6379/0
-      LOCAL_STORAGE_ROOT: /app/storage
-      UPLOAD_STORAGE_ROOT: /app/storage/uploads
-      REPORT_EXPORT_STORAGE_ROOT: /app/storage/exports
-      REPORT_EXPORT_MAX_ROWS_PER_CHART: ${REPORT_EXPORT_MAX_ROWS_PER_CHART:-10000}
-      IMPORT_MAX_FILE_SIZE_BYTES: ${IMPORT_MAX_FILE_SIZE_BYTES:-268435456}
-      IMPORT_MAX_ROWS: ${IMPORT_MAX_ROWS:-2000000}
-      IMPORT_PARSE_TIMEOUT_SECONDS: ${IMPORT_PARSE_TIMEOUT_SECONDS:-120}
-      IMPORT_INFERENCE_SAMPLE_SIZE: ${IMPORT_INFERENCE_SAMPLE_SIZE:-1000}
-      IMPORT_PREVIEW_SAMPLE_SIZE: ${IMPORT_PREVIEW_SAMPLE_SIZE:-20}
-      IMPORT_MATERIALIZATION_BATCH_SIZE: ${IMPORT_MATERIALIZATION_BATCH_SIZE:-1000}
-      IMPORT_STORAGE_CHUNK_SIZE_BYTES: ${IMPORT_STORAGE_CHUNK_SIZE_BYTES:-1048576}
+      DATABASE_URL: sqlite+pysqlite:////app/storage/vibe-data.db
+      DATA_STORAGE_ROOT: /app/storage/datasets
+      EXPORT_STORAGE_ROOT: /app/storage/exports
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-134217728}
+      DATASET_MAX_ROWS: ${DATASET_MAX_ROWS:-500000}
+      DATASET_MAX_COLUMNS: ${DATASET_MAX_COLUMNS:-300}
+      PREVIEW_ROWS: ${PREVIEW_ROWS:-30}
+      PARTICLE_SAMPLE_ROWS: ${PARTICLE_SAMPLE_ROWS:-1500}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-5-mini}
+      LLM_API_STYLE: ${LLM_API_STYLE:-responses}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - ./scripts:/demo/scripts:ro
-      - ./examples:/demo/examples:ro
       - backend_storage:/app/storage
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -88,12 +42,8 @@ services:
       dockerfile: docker/frontend.Dockerfile
     environment:
       VITE_API_BASE_URL: http://127.0.0.1:8000/api
-      VITE_DEV_ACCESS_TOKEN: ${VITE_DEV_ACCESS_TOKEN:-local-dev-token-usr_admin}
     ports:
       - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
     depends_on:
       backend:
         condition: service_healthy
@@ -109,14 +59,5 @@ services:
       timeout: 5s
       retries: 5
 
-  worker:
-    image: python:3.13-slim
-    profiles:
-      - worker
-    command: ["python", "-c", "print('Worker placeholder reserved for Celery/RQ milestone')"]
-
 volumes:
-  postgres_data:
-  redis_data:
   backend_storage:
-  frontend_node_modules:

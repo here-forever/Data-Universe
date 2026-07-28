@@ -1,24 +1,24 @@
 [project]
-name = "data-analysis-system-backend"
+name = "vibe-data-universe-backend"
 version = "0.1.0"
-description = "FastAPI backend for the Data Analysis System."
+description = "FastAPI and Python data-science backend for Vibe Data Universe."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.17.0",
-    "cryptography>=45.0.0",
-    "email-validator>=2.3.0",
     "fastapi>=0.121.0,<0.139.0",
     "httpx>=0.28.0",
+    "numpy>=2.3.0",
     "openpyxl>=3.1.0",
+    "pandas>=2.3.0",
     "pydantic-settings>=2.11.0",
-    "pymysql>=1.1.0",
-    "psycopg[binary]>=3.2.0",
     "python-multipart>=0.0.20",
-    "python-dotenv>=1.2.0",
     "reportlab>=4.4.0",
+    "scikit-learn>=1.7.0",
+    "scipy>=1.16.0",
     "sqlalchemy>=2.0.0",
     "uvicorn[standard]>=0.38.0",
+    "xlrd>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +45,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"

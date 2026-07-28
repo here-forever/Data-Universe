@@ -6,40 +6,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth.service import auth_service
-from app.cleaning.service import cleaning_service
 from app.core.config import get_settings
-from app.core.database import Base, get_db_session, import_models
-from app.data_sources.service import data_source_service
-from app.data_views.service import data_view_service
-from app.datasets.service import dataset_service
-from app.imports.service import import_service
+from app.core.database import Base, get_db_session, import_models, reset_database_bindings
 from app.main import create_app
-from app.permissions.service import permission_service
-from app.projects.service import project_service
-from app.tasks.service import task_service
-from app.visualizations.service import visualization_service
-
-
-@pytest.fixture(autouse=True)
-def reset_development_services() -> None:
-    auth_service.reset()
-    project_service.reset()
-    permission_service.reset()
-    import_service.reset()
-    dataset_service.reset()
-    cleaning_service.reset()
-    data_view_service.reset()
-    data_source_service.reset()
-    task_service.reset()
-    visualization_service.reset()
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch) -> Generator[TestClient]:
-    monkeypatch.setenv("UPLOAD_STORAGE_ROOT", str(tmp_path / "uploads"))
-    monkeypatch.setenv("REPORT_EXPORT_STORAGE_ROOT", str(tmp_path / "exports"))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'vibe-test.db'}")
+    monkeypatch.setenv("DATA_STORAGE_ROOT", str(tmp_path / "datasets"))
+    monkeypatch.setenv("EXPORT_STORAGE_ROOT", str(tmp_path / "exports"))
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
     get_settings.cache_clear()
+    reset_database_bindings()
     import_models()
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
@@ -59,7 +38,11 @@ def client(tmp_path, monkeypatch) -> Generator[TestClient]:
 
     app.dependency_overrides[get_db_session] = override_get_db_session
     try:
-        yield TestClient(app)
+        with TestClient(app) as test_client:
+            yield test_client
     finally:
         app.dependency_overrides.clear()
+        Base.metadata.drop_all(engine)
+        engine.dispose()
         get_settings.cache_clear()
+        reset_database_bindings()

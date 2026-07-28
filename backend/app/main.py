@@ -1,23 +1,36 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.database import init_database
 from app.core.errors import AppError, app_error_handler
-from app.core.logging import configure_logging
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    settings = get_settings()
+    Path(settings.data_storage_root).mkdir(parents=True, exist_ok=True)
+    Path(settings.export_storage_root).mkdir(parents=True, exist_ok=True)
+    init_database()
+    yield
 
 
 def create_app() -> FastAPI:
-    configure_logging()
     settings = get_settings()
     app = FastAPI(
         title=settings.app_name,
+        version="1.0.0",
         debug=settings.app_debug,
+        lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
