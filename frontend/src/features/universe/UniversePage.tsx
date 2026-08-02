@@ -1,9 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRight,
   Bot,
   CircleGauge,
-  Database,
   LoaderCircle,
   Pause,
   Play,
@@ -12,8 +10,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
+import { RecoverableError } from "../../app/RecoverableError";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { LlmSettingsButton } from "../ai/LlmSettingsButton";
 import {
@@ -177,12 +175,13 @@ export default function UniversePage() {
   if (dataset.isError) {
     return (
       <section className="universe-page universe-empty">
-        <Database size={34} />
-        <h1>{t("universe.errorTitle")}</h1>
-        <p>{dataset.error.message}</p>
-        <Link className="command-button" to="/data">
-          {t("universe.openData")} <ArrowRight size={16} />
-        </Link>
+        <RecoverableError
+          className="universe-recoverable-error"
+          isRetrying={dataset.isFetching}
+          message={dataset.error.message}
+          onRetry={() => void dataset.refetch()}
+          title={t("universe.errorTitle")}
+        />
       </section>
     );
   }

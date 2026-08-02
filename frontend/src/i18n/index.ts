@@ -40,8 +40,17 @@ const zhCN = {
   "shell.upload": "上传文件",
   "shell.toggleTheme": "切换明暗模式",
   "route.loading": "正在汇聚数据",
+  "recovery.eyebrow": "系统恢复",
+  "recovery.title": "这次探索意外中断了",
+  "recovery.body":
+    "你的本地数据没有受到影响。重新加载页面通常可以恢复当前工作区。",
+  "recovery.reload": "重新加载",
+  "recovery.home": "返回数据宇宙",
   "common.close": "关闭",
   "common.cancel": "取消",
+  "common.retry": "重试",
+  "common.retrying": "正在重试",
+  "common.requestFailed": "暂时无法读取数据",
   "common.yes": "是",
   "common.no": "否",
   "common.missing": "缺失",
@@ -355,8 +364,17 @@ const enUS: Record<TranslationKey, string> = {
   "shell.upload": "Upload file",
   "shell.toggleTheme": "Toggle light and dark mode",
   "route.loading": "Gathering data",
+  "recovery.eyebrow": "SYSTEM RECOVERY",
+  "recovery.title": "This exploration was interrupted",
+  "recovery.body":
+    "Your local data is safe. Reloading the page usually restores the current workspace.",
+  "recovery.reload": "Reload page",
+  "recovery.home": "Return to Data Universe",
   "common.close": "Close",
   "common.cancel": "Cancel",
+  "common.retry": "Retry",
+  "common.retrying": "Retrying",
+  "common.requestFailed": "Data is temporarily unavailable",
   "common.yes": "Yes",
   "common.no": "No",
   "common.missing": "Missing",
@@ -658,7 +676,8 @@ export function translate(
   key: TranslationKey,
   values: TranslationValues = {},
 ): string {
-  return resources[language][key].replace(/\{(\w+)\}/g, (match, name) =>
+  const template = resources[language][key] ?? resources["zh-CN"][key] ?? key;
+  return template.replace(/\{(\w+)\}/g, (match, name) =>
     Object.hasOwn(values, name) ? String(values[name]) : match,
   );
 }

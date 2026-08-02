@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RecoverableError } from "../../app/RecoverableError";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { useWorkspaceStore } from "../workspace/workspaceStore";
 import { type TranslationKey, useI18n } from "../../i18n";
@@ -237,10 +238,11 @@ export default function DataWorkbenchPage() {
               {t("data.loadingProfile")}
             </div>
           ) : detail.isError ? (
-            <div className="surface-error">
-              <AlertTriangle />
-              {detail.error.message}
-            </div>
+            <RecoverableError
+              isRetrying={detail.isFetching}
+              message={detail.error.message}
+              onRetry={() => void detail.refetch()}
+            />
           ) : detail.data ? (
             <>
               <div className="dataset-header">

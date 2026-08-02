@@ -98,6 +98,67 @@ a {
   color-scheme: light;
 }
 
+.app-crash-shell {
+  display: block;
+}
+
+.app-crash {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  background:
+    radial-gradient(
+      circle at 50% 28%,
+      color-mix(in srgb, var(--sea) 10%, transparent),
+      transparent 38%
+    ),
+    var(--bg);
+}
+
+.app-crash-card {
+  width: min(520px, 100%);
+  padding: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: center;
+  background: var(--surface);
+  box-shadow: 0 24px 80px color-mix(in srgb, #000 32%, transparent);
+}
+
+.app-crash-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--coral) 48%, var(--line));
+  border-radius: 50%;
+  color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 8%, transparent);
+}
+
+.app-crash-card h1 {
+  margin: 9px 0 8px;
+  font-size: clamp(24px, 4vw, 34px);
+}
+
+.app-crash-card p {
+  max-width: 410px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.recovery-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
 .app-rail {
   grid-area: rail;
   z-index: 20;
@@ -427,6 +488,42 @@ a {
   flex-direction: column;
   color: #89988f;
   background: #101310;
+}
+
+.recoverable-error {
+  min-height: 220px;
+  flex-direction: column;
+  padding: 24px;
+  text-align: center;
+}
+
+.recoverable-error > svg {
+  color: var(--coral);
+}
+
+.recoverable-error-copy {
+  display: grid;
+  max-width: 440px;
+  gap: 6px;
+}
+
+.recoverable-error-copy strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.recoverable-error-copy span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.universe-recoverable-error {
+  width: min(520px, calc(100% - 32px));
+  min-height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
 }
 
 .loading-orbit {

@@ -7,6 +7,11 @@ import { useWorkspaceStore } from "../features/workspace/workspaceStore";
 import { type DatasetSummary, vibeApi } from "../lib/vibeApi";
 import { renderWithProviders } from "../test/test-utils";
 import { AppShell } from "./AppShell";
+import { preloadRoute } from "./routeModules";
+
+vi.mock("./routeModules", () => ({
+  preloadRoute: vi.fn(),
+}));
 
 vi.mock("../features/collaboration/CollaborationContext", () => ({
   CollaborationProvider: ({ children }: { children: ReactNode }) => children,
@@ -42,6 +47,7 @@ describe("AppShell", () => {
       theme: "dark",
     });
     vi.spyOn(vibeApi, "listDatasets").mockResolvedValue([dataset]);
+    vi.mocked(preloadRoute).mockClear();
   });
 
   afterEach(() => {
@@ -103,5 +109,14 @@ describe("AppShell", () => {
     expect(
       window.localStorage.getItem("vibe-data-universe.workspace"),
     ).toContain('"language":"en-US"');
+  });
+
+  test("用户准备导航时预加载目标工作区", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+
+    await user.hover(screen.getByRole("link", { name: /分析实验室/ }));
+
+    expect(preloadRoute).toHaveBeenCalledWith("/analysis");
   });
 });

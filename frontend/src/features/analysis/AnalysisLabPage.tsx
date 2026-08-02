@@ -17,6 +17,7 @@ import {
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { RecoverableError } from "../../app/RecoverableError";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { LlmSettingsButton } from "../ai/LlmSettingsButton";
 import {
@@ -85,6 +86,7 @@ export default function AnalysisLabPage() {
     queryFn: () => vibeApi.explore(activeDatasetId!, filters, language),
     enabled: Boolean(activeDatasetId),
   });
+  const loadError = dataset.error ?? exploration.error;
 
   const applyFilter = (field: string, value: string) => {
     send("chart_filter", { field, value });
@@ -158,11 +160,15 @@ export default function AnalysisLabPage() {
           <LoaderCircle className="spin" />
           {t("analysis.loading")}
         </div>
-      ) : exploration.isError ? (
-        <div className="surface-error">
-          <AlertTriangle />
-          {exploration.error.message}
-        </div>
+      ) : loadError ? (
+        <RecoverableError
+          className="lab-loading"
+          isRetrying={dataset.isFetching || exploration.isFetching}
+          message={loadError.message}
+          onRetry={() => {
+            void Promise.all([dataset.refetch(), exploration.refetch()]);
+          }}
+        />
       ) : exploration.data && dataset.data ? (
         <>
           {tab === "explore" && (

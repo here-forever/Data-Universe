@@ -3,17 +3,17 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { useI18n } from "../i18n";
 import { AppShell } from "./AppShell";
+import {
+  loadAnalysisLabPage,
+  loadDataWorkbenchPage,
+  loadStoryStudioPage,
+  loadUniversePage,
+} from "./routeModules";
 
-const UniversePage = lazy(() => import("../features/universe/UniversePage"));
-const DataWorkbenchPage = lazy(
-  () => import("../features/data/DataWorkbenchPage"),
-);
-const AnalysisLabPage = lazy(
-  () => import("../features/analysis/AnalysisLabPage"),
-);
-const StoryStudioPage = lazy(
-  () => import("../features/stories/StoryStudioPage"),
-);
+const UniversePage = lazy(loadUniversePage);
+const DataWorkbenchPage = lazy(loadDataWorkbenchPage);
+const AnalysisLabPage = lazy(loadAnalysisLabPage);
+const StoryStudioPage = lazy(loadStoryStudioPage);
 
 function RouteFallback() {
   const { t } = useI18n();

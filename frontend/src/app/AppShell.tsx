@@ -17,6 +17,7 @@ import { useWorkspaceStore } from "../features/workspace/workspaceStore";
 import { useI18n } from "../i18n";
 import { queryKeys, vibeApi } from "../lib/vibeApi";
 import { navigationItems } from "./navigation";
+import { preloadRoute } from "./routeModules";
 
 export function AppShell() {
   return (
@@ -65,7 +66,13 @@ function ShellFrame() {
   return (
     <div className="app-shell" data-language={language} data-theme={theme}>
       <aside className="app-rail" aria-label={t("nav.main")}>
-        <NavLink className="brand-mark" to="/" aria-label="Vibe Data Universe">
+        <NavLink
+          aria-label="Vibe Data Universe"
+          className="brand-mark"
+          onFocus={() => preloadRoute("/")}
+          onMouseEnter={() => preloadRoute("/")}
+          to="/"
+        >
           <span className="brand-pulse" aria-hidden="true" />
           <span className="brand-copy">
             <strong>VIBE</strong>
@@ -82,6 +89,8 @@ function ShellFrame() {
                   `rail-link${isActive ? " is-active" : ""}`
                 }
                 end={item.end}
+                onFocus={() => preloadRoute(item.path)}
+                onMouseEnter={() => preloadRoute(item.path)}
                 to={item.path}
                 title={`${t(item.labelKey)} · ${t(item.descriptionKey)}`}
               >
@@ -179,7 +188,13 @@ function ShellFrame() {
               EN
             </button>
           </div>
-          <NavLink className="icon-button" to="/data" title={t("shell.upload")}>
+          <NavLink
+            className="icon-button"
+            onFocus={() => preloadRoute("/data")}
+            onMouseEnter={() => preloadRoute("/data")}
+            to="/data"
+            title={t("shell.upload")}
+          >
             <Upload size={18} />
           </NavLink>
           <button
@@ -205,6 +220,8 @@ function ShellFrame() {
               key={item.path}
               className={({ isActive }) => (isActive ? "is-active" : "")}
               end={item.end}
+              onFocus={() => preloadRoute(item.path)}
+              onTouchStart={() => preloadRoute(item.path)}
               to={item.path}
             >
               <Icon size={19} aria-hidden="true" />
