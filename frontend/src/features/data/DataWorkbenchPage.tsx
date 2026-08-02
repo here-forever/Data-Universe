@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmDialog } from "../../app/ConfirmDialog";
 import { RecoverableError } from "../../app/RecoverableError";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { useWorkspaceStore } from "../workspace/workspaceStore";
@@ -82,6 +83,10 @@ export default function DataWorkbenchPage() {
   const offset =
     pagination.datasetId === activeDatasetId ? pagination.offset : 0;
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const datasets = useQuery({
     queryKey: queryKeys.datasets,
@@ -108,6 +113,7 @@ export default function DataWorkbenchPage() {
   const removeDataset = useMutation({
     mutationFn: vibeApi.deleteDataset,
     onSuccess: async () => {
+      setDeleteTarget(null);
       setActiveDataset(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.datasets });
     },
@@ -209,15 +215,11 @@ export default function DataWorkbenchPage() {
               className="danger-link"
               disabled={removeDataset.isPending}
               onClick={() => {
-                if (
-                  window.confirm(
-                    t("data.deleteConfirm", {
-                      name: detail.data?.name ?? t("data.currentDataset"),
-                    }),
-                  )
-                ) {
-                  removeDataset.mutate(activeDatasetId);
-                }
+                removeDataset.reset();
+                setDeleteTarget({
+                  id: activeDatasetId,
+                  name: detail.data?.name ?? t("data.currentDataset"),
+                });
               }}
               type="button"
             >
@@ -349,6 +351,26 @@ export default function DataWorkbenchPage() {
           }}
         />
       )}
+      {deleteTarget ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("data.deleteCurrent")}
+          description={t("data.deleteConfirm", { name: deleteTarget.name })}
+          error={
+            removeDataset.isError ? removeDataset.error.message : undefined
+          }
+          eyebrow={t("common.destructiveAction")}
+          isPending={removeDataset.isPending}
+          onCancel={() => {
+            if (removeDataset.isPending) return;
+            removeDataset.reset();
+            setDeleteTarget(null);
+          }}
+          onConfirm={() => removeDataset.mutate(deleteTarget.id)}
+          pendingLabel={t("common.deleting")}
+          title={t("data.deleteTitle")}
+        />
+      ) : null}
     </section>
   );
 }

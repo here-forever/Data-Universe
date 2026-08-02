@@ -19,6 +19,7 @@ import {
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { ConfirmDialog } from "../../app/ConfirmDialog";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { useWorkspaceStore } from "../workspace/workspaceStore";
 import { useI18n } from "../../i18n";
@@ -43,6 +44,10 @@ export default function StoryStudioPage() {
     value: Story;
   } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [storyToDelete, setStoryToDelete] = useState<Pick<
+    Story,
+    "id" | "title"
+  > | null>(null);
 
   const datasets = useQuery({
     queryKey: queryKeys.datasets,
@@ -121,6 +126,7 @@ export default function StoryStudioPage() {
   const remove = useMutation({
     mutationFn: vibeApi.deleteStory,
     onSuccess: async () => {
+      setStoryToDelete(null);
       setRequestedStoryId(null);
       setDraft(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -333,8 +339,8 @@ export default function StoryStudioPage() {
                 <button
                   className="danger-link"
                   onClick={() => {
-                    if (window.confirm(t("stories.deleteConfirm")))
-                      remove.mutate(draft.id);
+                    remove.reset();
+                    setStoryToDelete({ id: draft.id, title: draft.title });
                   }}
                   type="button"
                 >
@@ -414,6 +420,26 @@ export default function StoryStudioPage() {
           )}
         </aside>
       </div>
+      {storyToDelete ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("stories.delete")}
+          description={t("stories.deleteConfirm", {
+            name: storyToDelete.title,
+          })}
+          error={remove.isError ? remove.error.message : undefined}
+          eyebrow={t("common.destructiveAction")}
+          isPending={remove.isPending}
+          onCancel={() => {
+            if (remove.isPending) return;
+            remove.reset();
+            setStoryToDelete(null);
+          }}
+          onConfirm={() => remove.mutate(storyToDelete.id)}
+          pendingLabel={t("common.deleting")}
+          title={t("stories.deleteTitle")}
+        />
+      ) : null}
     </section>
   );
 }
