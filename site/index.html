@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vibe Data Universe — 本地优先的数据探索系统</title>
+  <meta name="description" content="面向大学生、科研人员与数据分析初学者的本地优先数据探索系统：文件接入、数据画像、版本化清洗、智能分析、3D 粒子叙事与报告导出。">
+  <meta property="og:title" content="Vibe Data Universe">
+  <meta property="og:description" content="把一行行数据变成可以漫游的宇宙。本地优先、免登录、可导出报告的数据探索系统。">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%234f46e5'/%3E%3Ccircle cx='11' cy='12' r='2' fill='%23fff'/%3E%3Ccircle cx='20' cy='10' r='1.4' fill='%23c7d2fe'/%3E%3Ccircle cx='22' cy='20' r='2.4' fill='%23fff'/%3E%3Ccircle cx='12' cy='21' r='1.2' fill='%23c7d2fe'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav" id="top">
+    <div class="container nav-inner">
+      <a class="brand" href="#top" aria-label="Vibe Data Universe 首页">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="currentColor" opacity="0.14"/><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="11" cy="12" r="2" fill="currentColor"/><circle cx="20" cy="10" r="1.3" fill="currentColor" opacity="0.6"/><circle cx="22" cy="20" r="2.3" fill="currentColor"/><circle cx="12" cy="21" r="1.1" fill="currentColor" opacity="0.6"/></svg>
+        <span>Vibe Data Universe</span>
+      </a>
+      <nav class="nav-links" id="navLinks" aria-label="主导航">
+        <a href="#features">核心能力</a>
+        <a href="#screenshots">系统截图</a>
+        <a href="#workflow">工作流程</a>
+        <a href="#quickstart">快速开始</a>
+        <a class="nav-cta" href="https://github.com/here-forever/Data-Universe" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+      <button class="nav-toggle" id="navToggle" aria-label="打开导航菜单" aria-expanded="false" aria-controls="navLinks">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">本地优先 · 免登录 · 可导出报告</p>
+          <h1>把一行行数据，<br>变成可以漫游的宇宙</h1>
+          <p class="lead">
+            Vibe Data Universe 面向大学生、科研人员与数据分析初学者，
+            将文件接入、数据画像、版本化清洗、智能分析、3D 粒子叙事与报告导出
+            组织成一条连续工作流。
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://github.com/here-forever/Data-Universe" target="_blank" rel="noopener">查看 GitHub 仓库</a>
+            <a class="btn btn-ghost" href="#quickstart">本地跑起来</a>
+          </div>
+          <dl class="hero-stats">
+            <div><dt>128 MiB</dt><dd>单文件上限</dd></div>
+            <div><dt>50 万行</dt><dd>单数据集行数</dd></div>
+            <div><dt>4 种格式</dt><dd>CSV / Excel / JSON / TXT</dd></div>
+          </dl>
+        </div>
+        <figure class="hero-figure reveal">
+          <img src="screenshots/data-universe.png" alt="数据宇宙：每行数据映射为 3D 粒子的可视化界面" loading="eager" width="1280" height="800">
+          <figcaption>数据宇宙 · 每行数据都是一个粒子</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+      <div class="container">
+        <h2 class="section-title reveal">核心能力</h2>
+        <p class="section-sub reveal">从原始文件到可分享的报告，一条流水线完成。</p>
+        <div class="feature-grid">
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="8" r="1" fill="currentColor" opacity=".55"/><circle cx="16" cy="15" r="1.6" fill="currentColor"/><circle cx="9" cy="15" r=".9" fill="currentColor" opacity=".55"/></svg></div>
+            <h3>数据宇宙</h3>
+            <p>每一行数据映射为 3D 粒子，支持旋转、缩放、自动巡航、轴与颜色映射、粒子检查和 AI 解说。</p>
+          </article>
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 9v9" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <h3>数据工作台</h3>
+            <p>拖拽接入 CSV、Excel、JSON、TXT，查看分页数据、字段画像、质量问题和修订历史。</p>
+          </article>
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-8M22 19H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            <h3>分析实验室</h3>
+            <p>自动 EDA、智能图表推荐、图表联动、相关性矩阵、异常检测、自然语言问数与高级统计。</p>
+          </article>
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12h8M8 16h5M8 8h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            <h3>故事编辑器</h3>
+            <p>把指标、图表、质量信息和叙述编排成故事流，一键导出 HTML 与 PDF 报告。</p>
+          </article>
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+            <h3>本地优先</h3>
+            <p>默认 SQLite 与本地文件系统，不要求登录；未配置大模型时仍可完整使用统计分析能力。</p>
+          </article>
+          <article class="feature-card reveal">
+            <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            <h3>可靠体验</h3>
+            <p>路由按导航意图预加载，查询失败原地重试，异常有全局恢复页，删除操作二次确认。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screenshots -->
+    <section class="section section-alt" id="screenshots">
+      <div class="container">
+        <h2 class="section-title reveal">系统截图</h2>
+        <p class="section-sub reveal">点击查看大图。</p>
+        <div class="shot-grid">
+          <figure class="shot reveal" data-full="screenshots/data-workbench.png">
+            <img src="screenshots/data-workbench.png" alt="数据工作台界面截图" loading="lazy" width="1280" height="800">
+            <figcaption>数据工作台</figcaption>
+          </figure>
+          <figure class="shot reveal" data-full="screenshots/analysis-lab.png">
+            <img src="screenshots/analysis-lab.png" alt="分析实验室智能图表推荐界面截图" loading="lazy" width="1280" height="800">
+            <figcaption>分析实验室 · 智能图表推荐</figcaption>
+          </figure>
+          <figure class="shot reveal" data-full="screenshots/story-studio.png">
+            <img src="screenshots/story-studio.png" alt="故事编辑器界面截图" loading="lazy" width="1280" height="800">
+            <figcaption>故事编辑器</figcaption>
+          </figure>
+          <figure class="shot reveal" data-full="screenshots/analysis-lab-mobile.png">
+            <img src="screenshots/analysis-lab-mobile.png" alt="移动端分析界面截图" loading="lazy" width="1280" height="800">
+            <figcaption>移动端分析</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workflow -->
+    <section class="section" id="workflow">
+      <div class="container">
+        <h2 class="section-title reveal">工作流程</h2>
+        <p class="section-sub reveal">七步，从文件到报告。</p>
+        <ol class="pipeline">
+          <li class="reveal"><span class="step-no">1</span><div><h3>文件接入</h3><p>CSV / Excel / JSON / TXT，拖拽即传，自动嗅探编码与分隔符。</p></div></li>
+          <li class="reveal"><span class="step-no">2</span><div><h3>自动画像</h3><p>字段类型推断、统计画像与数据质量评分。</p></div></li>
+          <li class="reveal"><span class="step-no">3</span><div><h3>版本化清洗</h3><p>每一步清洗生成新修订，随时回退对比。</p></div></li>
+          <li class="reveal"><span class="step-no">4</span><div><h3>智能分析</h3><p>EDA、自然语言问数、回归 / 检验 / 聚类等高级统计。</p></div></li>
+          <li class="reveal"><span class="step-no">5</span><div><h3>粒子叙事</h3><p>数据行变成 3D 粒子，在宇宙中漫游观察结构。</p></div></li>
+          <li class="reveal"><span class="step-no">6</span><div><h3>故事编排</h3><p>把指标、图表与文字组织成可叙述的故事流。</p></div></li>
+          <li class="reveal"><span class="step-no">7</span><div><h3>报告导出</h3><p>导出 HTML 或 PDF，直接分享结论。</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="section section-alt" id="quickstart">
+      <div class="container">
+        <h2 class="section-title reveal">快速开始</h2>
+        <p class="section-sub reveal">需要 Python 3.13、Node.js 24 与 uv。</p>
+        <div class="code-grid">
+          <div class="code-card reveal">
+            <div class="code-head"><span>后端</span><button class="copy-btn" data-copy-target="code-backend">复制</button></div>
+            <pre><code id="code-backend">cd backend
+uv sync --frozen --extra dev
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload --port 8000</code></pre>
+          </div>
+          <div class="code-card reveal">
+            <div class="code-head"><span>前端</span><button class="copy-btn" data-copy-target="code-frontend">复制</button></div>
+            <pre><code id="code-frontend">cd frontend
+npm ci
+npm run dev
+# 打开 http://127.0.0.1:5173</code></pre>
+          </div>
+          <div class="code-card reveal">
+            <div class="code-head"><span>Docker 一键启动</span><button class="copy-btn" data-copy-target="code-docker">复制</button></div>
+            <pre><code id="code-docker">docker compose up --build
+# Web: http://127.0.0.1:5173
+# API 文档: http://127.0.0.1:8000/docs</code></pre>
+          </div>
+        </div>
+        <div class="stack reveal">
+          <span class="stack-label">技术栈</span>
+          <ul class="stack-list">
+            <li>FastAPI</li><li>SQLAlchemy</li><li>Pandas</li><li>React 19</li><li>TypeScript</li><li>Vite</li><li>three.js</li><li>ECharts</li><li>SQLite</li><li>Docker</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <p>Vibe Data Universe — 本地优先的数据探索系统</p>
+      <p class="footer-links">
+        <a href="https://github.com/here-forever/Data-Universe" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/here-forever/Data-Universe/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener">使用手册</a>
+        <a href="https://github.com/here-forever/Data-Universe/issues" target="_blank" rel="noopener">问题反馈</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- 图片查看器 -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="查看大图" hidden>
+    <img id="lightboxImg" src="" alt="截图大图">
+    <button class="lightbox-close" id="lightboxClose" aria-label="关闭">×</button>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

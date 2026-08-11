@@ -1,0 +1,74 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build (minify HTML/CSS/JS into dist/)
+        run: |
+          npm install --global html-minifier clean-css-cli uglify-js
+          mkdir -p dist
+          html-minifier --collapse-whitespace --remove-comments \
+            -o dist/index.html site/index.html
+          cleancss -o dist/styles.css site/styles.css
+          uglifyjs site/script.js --compress --mangle -o dist/script.js
+          cp -r site/screenshots dist/screenshots
+
+      # CNAME 为占位域名 example.com 时不发布到产物中：
+      # 此时站点通过默认地址 <user>.github.io/Data-Universe/ 访问。
+      # 将 site/CNAME 改为真实域名后推送，即自动绑定自定义域名。
+      - name: Include CNAME only when a real domain is configured
+        run: |
+          DOMAIN=$(tr -d '\r\n' < site/CNAME)
+          if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "example.com" ]; then
+            printf '%s\n' "$DOMAIN" > dist/CNAME
+            echo "Custom domain $DOMAIN will be published."
+          else
+            echo "CNAME is the placeholder (example.com); skipping. Site will use the default github.io URL."
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
