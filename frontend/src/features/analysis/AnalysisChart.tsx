@@ -45,10 +45,10 @@ export default function AnalysisChart({
 
   useEffect(() => {
     if (!container.current) return;
-    const ink = theme === "dark" ? "#dfe8e2" : "#26332d";
-    const muted = theme === "dark" ? "#7f9289" : "#6d7c75";
+    const ink = theme === "dark" ? "#c2cfc8" : "#3a4842";
+    const muted = theme === "dark" ? "#8a988f" : "#69776f";
     const grid =
-      theme === "dark" ? "rgba(210,230,220,.1)" : "rgba(31,52,43,.1)";
+      theme === "dark" ? "rgba(194,207,200,.1)" : "rgba(58,72,66,.1)";
     const instance = echarts.init(container.current, undefined, {
       renderer: "canvas",
     });

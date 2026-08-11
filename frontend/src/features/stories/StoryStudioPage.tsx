@@ -20,6 +20,7 @@ import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ConfirmDialog } from "../../app/ConfirmDialog";
+import "../../styles/stories.css";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { useWorkspaceStore } from "../workspace/workspaceStore";
 import { useI18n } from "../../i18n";

@@ -28,6 +28,7 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Credentials and private material
 *.pem
@@ -67,3 +68,10 @@ worktrees/
 .agents/
 .codex/
 .codex-pytest*/
+
+# WorkBuddy project memory / local agent data (not source)
+.workbuddy/
+
+# Generated end-to-end export artifacts (not source)
+examples/story_v2.html
+examples/e2e_story_export.html

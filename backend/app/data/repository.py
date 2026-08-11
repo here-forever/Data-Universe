@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import AppError
 from app.models import Dataset, DatasetRevision
 
 
@@ -37,4 +38,10 @@ class DatasetRepository:
 
     @staticmethod
     def active_revision(dataset: Dataset) -> DatasetRevision:
-        return next(item for item in dataset.revisions if item.revision == dataset.active_revision)
+        revision = next(
+            (item for item in dataset.revisions if item.revision == dataset.active_revision),
+            None,
+        )
+        if revision is None:
+            raise AppError("Active dataset revision not found", "dataset_revision_not_found", 404)
+        return revision

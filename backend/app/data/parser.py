@@ -1,9 +1,13 @@
+import codecs
 import csv
 import json
-from io import BytesIO, StringIO
+from io import BytesIO, TextIOWrapper
 from pathlib import Path
+from tempfile import SpooledTemporaryFile
+from typing import BinaryIO
 
 import pandas as pd
+from fastapi import UploadFile
 
 from app.core.config import Settings
 from app.core.errors import AppError
@@ -12,7 +16,26 @@ SUPPORTED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".xlsm", ".json", ".txt"}
 JSON_COLLECTION_KEYS = ("data", "records", "items", "rows")
 
 
-def parse_upload(filename: str, content: bytes, settings: Settings) -> pd.DataFrame:
+async def spool_upload(file: UploadFile, settings: Settings) -> SpooledTemporaryFile[bytes]:
+    validate_upload_filename(file.filename or "dataset.csv")
+    stream = SpooledTemporaryFile(max_size=settings.upload_spool_max_bytes, mode="w+b")
+    total = 0
+    try:
+        while chunk := await file.read(settings.upload_chunk_bytes):
+            total += len(chunk)
+            if total > settings.upload_max_bytes:
+                raise AppError("The uploaded file exceeds the size limit", "file_too_large", 413)
+            stream.write(chunk)
+        if total == 0:
+            raise AppError("The uploaded file is empty", "empty_file", 400)
+        stream.seek(0)
+        return stream
+    except Exception:
+        stream.close()
+        raise
+
+
+def validate_upload_filename(filename: str) -> str:
     extension = Path(filename).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
         raise AppError(
@@ -20,18 +43,26 @@ def parse_upload(filename: str, content: bytes, settings: Settings) -> pd.DataFr
             "unsupported_file_type",
             400,
         )
-    if not content:
+    return extension
+
+
+def parse_upload(filename: str, content: BinaryIO | bytes, settings: Settings) -> pd.DataFrame:
+    extension = validate_upload_filename(filename)
+    stream = BytesIO(content) if isinstance(content, bytes) else content
+    size = _stream_size(stream)
+    if size == 0:
         raise AppError("The uploaded file is empty", "empty_file", 400)
-    if len(content) > settings.upload_max_bytes:
+    if size > settings.upload_max_bytes:
         raise AppError("The uploaded file exceeds the size limit", "file_too_large", 413)
 
     try:
         if extension in {".csv", ".txt"}:
-            frame = _read_delimited(content)
+            frame = _read_delimited(stream)
         elif extension == ".json":
-            frame = _read_json(content)
+            frame = _read_json(stream)
         else:
-            frame = pd.read_excel(BytesIO(content), sheet_name=0)
+            stream.seek(0)
+            frame = pd.read_excel(stream, sheet_name=0)
     except AppError:
         raise
     except Exception as error:
@@ -66,37 +97,62 @@ def parse_upload(filename: str, content: bytes, settings: Settings) -> pd.DataFr
     return frame.convert_dtypes()
 
 
-def _decode_text(content: bytes) -> str:
-    for encoding in ("utf-8-sig", "gb18030", "utf-16"):
+def _stream_size(stream: BinaryIO) -> int:
+    current = stream.tell()
+    stream.seek(0, 2)
+    size = stream.tell()
+    stream.seek(current)
+    return size
+
+
+def _detect_encoding(stream: BinaryIO) -> str:
+    stream.seek(0)
+    sample = stream.read(64 * 1024)
+    stream.seek(0)
+    if sample.startswith(codecs.BOM_UTF8):
+        return "utf-8-sig"
+    if sample.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return "utf-16"
+    for encoding in ("utf-8", "gb18030"):
         try:
-            return content.decode(encoding)
+            codecs.decode(sample, encoding, errors="strict")
+            return encoding
         except UnicodeDecodeError:
             continue
     raise AppError("The text encoding is not supported", "unsupported_text_encoding", 422)
 
 
-def _read_delimited(content: bytes) -> pd.DataFrame:
-    text = _decode_text(content)
-    sample = text[:8_192]
-    delimiter: str | None = None
+def _text_stream(stream: BinaryIO) -> TextIOWrapper:
+    stream.seek(0)
+    return TextIOWrapper(stream, encoding=_detect_encoding(stream), newline="")
+
+
+def _read_delimited(stream: BinaryIO) -> pd.DataFrame:
+    text = _text_stream(stream)
     try:
-        delimiter = csv.Sniffer().sniff(sample, delimiters=",\t;|").delimiter
-    except csv.Error:
-        pass
+        sample = text.read(8_192)
+        text.seek(0)
+        delimiter: str | None = None
+        try:
+            delimiter = csv.Sniffer().sniff(sample, delimiters=",\t;|").delimiter
+        except csv.Error:
+            pass
+        if delimiter is None:
+            lines = [line.strip() for line in text if line.strip()]
+            return pd.DataFrame({"value": lines})
+        return pd.read_csv(text, sep=delimiter)
+    finally:
+        text.detach()
 
-    if delimiter is None:
-        lines = [line for line in text.splitlines() if line.strip()]
-        if not lines:
-            return pd.DataFrame()
-        return pd.DataFrame({"value": lines})
-    return pd.read_csv(StringIO(text), sep=delimiter)
 
-
-def _read_json(content: bytes) -> pd.DataFrame:
+def _read_json(stream: BinaryIO) -> pd.DataFrame:
+    text = _text_stream(stream)
     try:
-        payload = json.loads(_decode_text(content))
+        payload = json.load(text)
     except json.JSONDecodeError as error:
         raise AppError("The JSON document is invalid", "invalid_json", 422) from error
+    finally:
+        text.detach()
 
     if isinstance(payload, dict):
         wrapped = next(

@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any, Literal
 
 import httpx
 
 from app.core.config import Settings
+from app.core.metrics import record_llm_call
+from app.core.ssrf_guard import UnsafeUrlError, validate_outbound_https_url
+from app.i18n import render
 from app.insights.schemas import LlmConfig
 
 Locale = Literal["zh-CN", "en-US"]
@@ -112,6 +116,7 @@ class Narrator:
         prompt: str,
         instructions: str,
     ) -> str:
+        started = perf_counter()
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
         if connection.api_key:
             headers["Authorization"] = f"Bearer {connection.api_key}"
@@ -132,6 +137,11 @@ class Narrator:
                 ],
             }
         try:
+            validate_outbound_https_url(endpoint, resolve_dns=True)
+        except UnsafeUrlError as error:
+            self._record_llm_metrics(connection, "blocked_url", started)
+            raise ExternalLlmError("The provider URL is not allowed") from error
+        try:
             response = httpx.post(
                 endpoint,
                 headers=headers,
@@ -141,28 +151,59 @@ class Narrator:
             response.raise_for_status()
             payload = response.json()
         except httpx.HTTPStatusError as error:
-            detail = _provider_error(error.response)
-            raise ExternalLlmError(detail) from error
+            self._record_llm_metrics(connection, "provider_error", started)
+            raise ExternalLlmError(_provider_error(error.response.status_code)) from error
         except httpx.RequestError as error:
+            self._record_llm_metrics(connection, "network_error", started)
             raise ExternalLlmError("The provider could not be reached") from error
         except ValueError as error:
+            self._record_llm_metrics(connection, "invalid_json", started)
             raise ExternalLlmError("The provider returned invalid JSON") from error
 
         answer = _response_text(payload, connection.api_style)
         if not answer:
+            self._record_llm_metrics(connection, "empty_response", started, payload)
             raise ExternalLlmError("The provider returned an empty response")
+        self._record_llm_metrics(connection, "success", started, payload)
         return answer
 
+    def _record_llm_metrics(
+        self,
+        connection: LlmConnection,
+        status: str,
+        started: float,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        usage = payload.get("usage", {}) if payload else {}
+        input_tokens = _usage_value(usage, "input_tokens", "prompt_tokens")
+        output_tokens = _usage_value(usage, "output_tokens", "completion_tokens")
+        estimated_cost = (
+            input_tokens * self.settings.llm_input_cost_per_million
+            + output_tokens * self.settings.llm_output_cost_per_million
+        ) / 1_000_000
+        record_llm_call(
+            api_style=connection.api_style,
+            status=status,
+            duration_seconds=perf_counter() - started,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            estimated_cost_usd=estimated_cost,
+        )
 
-def _provider_error(response: httpx.Response) -> str:
-    try:
-        payload = response.json()
-        message = payload.get("error", {}).get("message")
-        if isinstance(message, str) and message.strip():
-            return f"Provider returned {response.status_code}: {message.strip()}"
-    except ValueError:
-        pass
-    return f"Provider returned HTTP {response.status_code}"
+
+def _provider_error(status_code: int) -> str:
+    if status_code in {401, 403}:
+        return "The provider rejected the supplied credentials"
+    if status_code == 429:
+        return "The provider rate limit was reached"
+    return "The provider rejected the request"
+
+
+def _usage_value(usage: Any, primary: str, fallback: str) -> int:
+    if not isinstance(usage, dict):
+        return 0
+    value = usage.get(primary, usage.get(fallback, 0))
+    return value if isinstance(value, int) and value > 0 else 0
 
 
 def _response_text(
@@ -179,8 +220,7 @@ def _response_text(
                 texts = [
                     item.get("text", "")
                     for item in content
-                    if isinstance(item, dict)
-                    and item.get("type") in {"text", "output_text"}
+                    if isinstance(item, dict) and item.get("type") in {"text", "output_text"}
                 ]
                 combined = "".join(str(item) for item in texts).strip()
                 return combined or None
@@ -195,17 +235,7 @@ def _response_text(
 
 
 def external_instructions(locale: Locale) -> str:
-    if locale == "en-US":
-        return (
-            "You are a concise data guide for students. Answer in English. Use only the "
-            "supplied aggregate evidence, state uncertainty, and never invent causality. "
-            "Return plain text in at most 120 words."
-        )
-    return (
-        "You are a concise data guide for students. Answer in Chinese. Use only the "
-        "supplied aggregate evidence, state uncertainty, and never invent causality. "
-        "Return plain text in at most 180 Chinese characters."
-    )
+    return render("external.instructions", locale)
 
 
 def build_evidence(
@@ -213,34 +243,27 @@ def build_evidence(
     exploration: dict[str, Any],
     locale: Locale = "zh-CN",
 ) -> list[str]:
-    if locale == "en-US":
-        evidence = [
-            f"{profile.get('row_count', 0):,} rows and {profile.get('column_count', 0)} columns",
-            f"data quality score {profile.get('quality_score', 0)} / 100",
-            f"{profile.get('missing_cells', 0):,} missing cells and "
-            f"{profile.get('duplicate_rows', 0):,} duplicate rows",
-        ]
-    else:
-        evidence = [
-            f"{profile.get('row_count', 0):,} 行，{profile.get('column_count', 0)} 个字段",
-            f"数据质量评分 {profile.get('quality_score', 0)} / 100",
-            f"{profile.get('missing_cells', 0):,} 个缺失单元格，"
-            f"{profile.get('duplicate_rows', 0):,} 个重复行",
-        ]
+    evidence = [
+        render(
+            "evidence.shape",
+            locale,
+            rows=profile.get("row_count", 0),
+            columns=profile.get("column_count", 0),
+        ),
+        render("evidence.quality", locale, score=profile.get("quality_score", 0)),
+        render(
+            "evidence.issues",
+            locale,
+            missing=profile.get("missing_cells", 0),
+            duplicates=profile.get("duplicate_rows", 0),
+        ),
+    ]
     strongest = exploration.get("correlations", {}).get("strongest_pairs", [])
     if strongest:
         pair = strongest[0]
-        evidence.append(
-            f"strongest numeric correlation: {pair['left']} / {pair['right']} = {pair['value']:.2f}"
-            if locale == "en-US"
-            else f"最强数值相关：{pair['left']} / {pair['right']} = {pair['value']:.2f}"
-        )
+        evidence.append(render("evidence.correlation", locale, **pair))
     if exploration.get("anomalies"):
-        evidence.append(
-            f"{len(exploration['anomalies'])} high-priority anomaly samples"
-            if locale == "en-US"
-            else f"{len(exploration['anomalies'])} 个高优先级异常样本"
-        )
+        evidence.append(render("evidence.anomalies", locale, count=len(exploration["anomalies"])))
     return evidence
 
 
@@ -257,26 +280,21 @@ def local_answer(
 
     if any(term in normalized for term in ("缺失", "质量", "clean", "missing")):
         most_missing = max(columns, key=lambda column: column.get("missing_count", 0), default=None)
-        if locale == "en-US":
-            detail = (
-                f"{most_missing['name']} has the most missing values "
-                f"({most_missing['missing_count']})"
-                if most_missing and most_missing.get("missing_count")
-                else "No notable missing values were found"
-            )
-            return (
-                f"The current quality score is {profile.get('quality_score', 0)}. "
-                f"{detail}. Complete any needed treatment in the Data Workbench before "
-                "comparing model results."
-            )
         detail = (
-            f"缺失最多的是 {most_missing['name']}（{most_missing['missing_count']} 条）"
+            render(
+                "answer.quality.missing",
+                locale,
+                field=most_missing["name"],
+                count=most_missing["missing_count"],
+            )
             if most_missing and most_missing.get("missing_count")
-            else "没有发现明显缺失"
+            else render("answer.quality.complete", locale)
         )
-        return (
-            f"当前质量评分 {profile.get('quality_score', 0)}。{detail}，"
-            "建议先在数据工作台完成处理后再比较模型结果。"
+        return render(
+            "answer.quality",
+            locale,
+            score=profile.get("quality_score", 0),
+            detail=detail,
         )
     if any(
         term in normalized
@@ -284,42 +302,14 @@ def local_answer(
     ):
         if strongest:
             pair = strongest[0]
-            if locale == "en-US":
-                return (
-                    f"{pair['left']} and {pair['right']} have the strongest linear "
-                    f"correlation at {pair['value']:.2f}. Correlation is not causation; "
-                    "continue with regression or a group test in the Analysis Lab."
-                )
-            return (
-                f"{pair['left']} 与 {pair['right']} 的线性相关最强，系数为 {pair['value']:.2f}。"
-                "相关不等于因果，可在分析实验室继续做回归或分组检验。"
-            )
-        return (
-            "There are not enough complete numeric fields for correlation analysis. "
-            "Check field types or address missing values first."
-            if locale == "en-US"
-            else "当前数据中可用于相关分析的完整数值字段不足，先检查字段类型或补齐缺失值。"
-        )
+            return render("answer.relationship", locale, **pair)
+        return render("answer.relationship.insufficient", locale)
     if any(term in normalized for term in ("异常", "突变", "突然", "outlier", "spike")):
         anomalies = exploration.get("anomalies", [])
         if anomalies:
             first = anomalies[0]
-            if locale == "en-US":
-                return (
-                    f"The clearest anomaly is in {first['field']} with a value of "
-                    f"{first['value']}, about {first['z_score']:.1f} standard deviations "
-                    "from the mean. Check the source record to confirm whether it is a real event."
-                )
-            return (
-                f"最明显的异常来自 {first['field']}，值为 {first['value']}，"
-                f"偏离约 {first['z_score']:.1f} 个标准差。"
-                "建议结合原始记录核对是否为真实事件。"
-            )
-        return (
-            "The IQR and standard-score checks found no clear anomalies that need priority review."
-            if locale == "en-US"
-            else "按 IQR 与标准分数检查后，没有发现需要优先处理的明显异常。"
-        )
+            return render("answer.anomaly", locale, **first)
+        return render("answer.anomaly.none", locale)
     if (
         any(
             term in normalized
@@ -329,35 +319,20 @@ def local_answer(
     ):
         field = numeric[0]
         stats = field.get("stats", {})
-        if locale == "en-US":
-            return (
-                f"{field['name']} has a mean of {stats.get('mean')}, a median of "
-                f"{stats.get('median')}, and ranges from {stats.get('min')} to "
-                f"{stats.get('max')}. The gap between mean and median can indicate skew."
-            )
-        return (
-            f"{field['name']} 的均值为 {stats.get('mean')}，中位数为 {stats.get('median')}，"
-            f"范围 {stats.get('min')} 到 {stats.get('max')}。均值与中位数的差距可帮助判断偏态。"
+        return render(
+            "answer.distribution",
+            locale,
+            field=field["name"],
+            mean=stats.get("mean"),
+            median=stats.get("median"),
+            minimum=stats.get("min"),
+            maximum=stats.get("max"),
         )
-    if locale == "en-US":
-        return (
-            f"This dataset contains {profile.get('row_count', 0):,} rows across "
-            f"{profile.get('column_count', 0)} fields, with a quality score of "
-            f"{profile.get('quality_score', 0)}. "
-            + (
-                f"Start with the relationship between {strongest[0]['left']} and "
-                f"{strongest[0]['right']}."
-                if strongest
-                else "Start with the recommended charts and field distributions."
-            )
-        )
-    return (
-        f"这份数据包含 {profile.get('row_count', 0):,} 行、"
-        f"{profile.get('column_count', 0)} 个字段，"
-        f"质量评分 {profile.get('quality_score', 0)}。"
-        + (
-            f"最值得先看的关系是 {strongest[0]['left']} 与 {strongest[0]['right']}。"
-            if strongest
-            else "建议先从推荐图表和字段分布开始探索。"
-        )
-    )
+    values = {
+        "rows": profile.get("row_count", 0),
+        "columns": profile.get("column_count", 0),
+        "score": profile.get("quality_score", 0),
+    }
+    if strongest:
+        return render("answer.default.relationship", locale, **values, **strongest[0])
+    return render("answer.default", locale, **values)

@@ -12,6 +12,8 @@ import { useWorkspaceStore } from "../workspace/workspaceStore";
 import {
   CollaborationContext,
   type CollaborationEvent,
+  parseCollaborationEvent,
+  reconnectDelay,
   type SharedFilter,
 } from "./collaborationState";
 
@@ -27,9 +29,8 @@ interface ChannelState {
 function resolveActor(): string {
   const key = "vibe-data-universe.actor";
   const stored = window.sessionStorage.getItem(key);
-  if (stored && !stored.startsWith("观测者-")) return stored;
-  const suffix = stored?.split("-").at(-1);
-  const actor = `VIBE-${suffix ?? crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+  if (stored) return stored.slice(0, 80);
+  const actor = `VIBE-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
   window.sessionStorage.setItem(key, actor);
   return actor;
 }
@@ -90,43 +91,64 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!datasetId) return;
+    let cancelled = false;
+    let reconnectAttempt = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const socket = new WebSocket(
-      `${API_BASE_URL.replace(/^http/, "ws")}/collaboration/${datasetId}/ws`,
-    );
-    socketRef.current = socket;
-    socket.onopen = () => {
-      setChannel((current) => ({
-        ...channelForDataset(current, datasetId),
-        connected: true,
-      }));
-    };
-    socket.onmessage = (message) => {
-      const event = JSON.parse(String(message.data)) as CollaborationEvent;
-      setChannel((current) => {
-        const active = channelForDataset(current, datasetId);
-        if (event.type === "presence" && typeof event.online === "number") {
-          return { ...active, online: event.online };
-        }
-        return applySharedEvent(active, event);
-      });
-    };
-    socket.onerror = () => {
-      setChannel((current) => ({
-        ...channelForDataset(current, datasetId),
-        connected: false,
-      }));
-    };
-    socket.onclose = () => {
-      setChannel((current) =>
-        current.datasetId === datasetId
-          ? { ...current, connected: false, online: 0 }
-          : current,
+    const connect = () => {
+      if (cancelled) return;
+      const socket = new WebSocket(
+        `${API_BASE_URL.replace(/^http/, "ws")}/collaboration/${datasetId}/ws`,
       );
+      socketRef.current = socket;
+      socket.onopen = () => {
+        reconnectAttempt = 0;
+        setChannel((current) => ({
+          ...channelForDataset(current, datasetId),
+          connected: true,
+        }));
+      };
+      socket.onmessage = (message) => {
+        const event = parseCollaborationEvent(String(message.data));
+        if (!event) return;
+        setChannel((current) => {
+          const active = channelForDataset(current, datasetId);
+          if (event.type === "presence" && typeof event.online === "number") {
+            return { ...active, online: event.online };
+          }
+          return applySharedEvent(active, event);
+        });
+      };
+      socket.onerror = () => {
+        setChannel((current) => ({
+          ...channelForDataset(current, datasetId),
+          connected: false,
+        }));
+      };
+      socket.onclose = () => {
+        if (socketRef.current === socket) socketRef.current = null;
+        setChannel((current) =>
+          current.datasetId === datasetId
+            ? { ...current, connected: false, online: 0 }
+            : current,
+        );
+        if (!cancelled) {
+          reconnectTimer = setTimeout(
+            connect,
+            reconnectDelay(reconnectAttempt),
+          );
+          reconnectAttempt += 1;
+        }
+      };
     };
+
+    connect();
     return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      const socket = socketRef.current;
       socketRef.current = null;
-      socket.close();
+      socket?.close(1000, "Dataset changed");
     };
   }, [datasetId]);
 

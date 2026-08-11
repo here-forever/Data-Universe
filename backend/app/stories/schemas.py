@@ -33,6 +33,6 @@ class StoryResponse(BaseModel):
     dataset_id: str
     title: str
     summary: str
-    blocks: list[dict[str, Any]]
+    blocks: list[StoryBlock]
     created_at: datetime
     updated_at: datetime

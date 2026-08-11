@@ -1,0 +1,352 @@
+/* Data universe */
+.universe-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 620px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.universe-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.particle-universe {
+  position: absolute;
+  inset: 0;
+}
+
+.universe-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: grab;
+}
+
+.universe-canvas canvas:active {
+  cursor: grabbing;
+}
+
+.canvas-loading {
+  position: absolute;
+  inset: 0;
+  font-size: 11px;
+}
+
+.universe-heading {
+  position: absolute;
+  z-index: 2;
+  top: 6%;
+  left: 4%;
+  max-width: 560px;
+  pointer-events: none;
+  animation: universe-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.universe-heading h1 {
+  margin: 9px 0 4px;
+  font-size: clamp(2.4rem, 5.2vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.universe-heading > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.universe-metrics {
+  display: flex;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.universe-metrics span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.universe-metrics strong {
+  margin-right: 4px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.narrator-panel,
+.particle-inspector {
+  position: absolute;
+  z-index: 3;
+  right: 24px;
+  width: 300px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-lg);
+}
+
+.narrator-panel {
+  top: 24px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-heading > div {
+  display: grid;
+  min-width: 0;
+}
+
+.panel-heading .llm-settings-trigger {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  margin-left: auto;
+}
+
+.panel-heading strong {
+  font-size: 12px;
+}
+
+.panel-heading small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.panel-icon {
+  display: inline-grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--primary-ink);
+}
+
+.panel-icon.coral {
+  background: var(--coral);
+}
+
+.panel-icon.sea {
+  background: var(--sea);
+}
+
+.narration-text {
+  min-height: 52px;
+  margin: 14px 0 9px;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.evidence-line {
+  display: block;
+  margin-top: 5px;
+  padding-left: 9px;
+  color: var(--muted);
+  border-left: 2px solid var(--yellow);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.narrator-input {
+  display: grid;
+  grid-template-columns: 1fr 34px;
+  gap: 6px;
+  margin-top: 13px;
+}
+
+.narrator-input input,
+.narrator-input button,
+.field-label input,
+.field-label select,
+.story-meta-editor input,
+.story-meta-editor textarea,
+.block-fields input,
+.block-fields textarea,
+.cleaning-step input,
+.cleaning-step select {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--surface-raised);
+}
+
+.narrator-input input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  font-size: 10px;
+}
+
+.narrator-input button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--primary-ink);
+  border-color: var(--sea);
+  background: var(--sea);
+}
+
+.particle-inspector {
+  top: 267px;
+  animation: inspector-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.inspector-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--yellow);
+  font-size: 11px;
+}
+
+.particle-inspector dl {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0 0;
+}
+
+.particle-inspector dl div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 8px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.particle-inspector dt,
+.particle-inspector dd {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.particle-inspector dt {
+  color: var(--muted);
+}
+
+.particle-inspector dd {
+  text-align: right;
+}
+
+.universe-controls {
+  display: flex;
+  position: absolute;
+  z-index: 4;
+  right: 24px;
+  bottom: 20px;
+  left: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.mapping-controls,
+.scene-actions {
+  display: flex;
+  gap: 7px;
+  pointer-events: auto;
+}
+
+.mapping-controls {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+  gap: 10px;
+}
+
+.mapping-controls label {
+  display: grid;
+  gap: 4px;
+}
+
+.mapping-controls label > span {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.mapping-controls select {
+  width: 132px;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: 0;
+  background: var(--surface-raised);
+  font-size: 9px;
+}
+
+.universe-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.universe-empty h1 {
+  margin: 16px 0 6px;
+  font-size: 24px;
+}
+
+.universe-empty p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Floating HUD action buttons share the dock treatment */
+.universe-controls .scene-actions .icon-button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes universe-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes inspector-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .universe-heading,
+  .particle-inspector {
+    animation: none;
+  }
+}

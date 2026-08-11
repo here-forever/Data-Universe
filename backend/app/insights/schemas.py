@@ -11,6 +11,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.core.ssrf_guard import validate_outbound_https_url
+
 Locale = Literal["zh-CN", "en-US"]
 
 
@@ -30,19 +32,56 @@ class ChartRecommendation(BaseModel):
     points: list[tuple[float, float]] | None = None
 
 
-class ExploreResponse(BaseModel):
-    dataset_id: str
-    revision: int
-    overview: dict[str, Any]
-    correlations: dict[str, Any]
-    distributions: list[dict[str, Any]]
-    anomalies: list[dict[str, Any]]
-    charts: list[ChartRecommendation]
-
-
 class ExploreFilter(BaseModel):
     field: str = Field(min_length=1, max_length=160)
     value: str = Field(max_length=500)
+
+
+class ExploreOverview(BaseModel):
+    row_count: int
+    source_row_count: int
+    column_count: int
+    quality_score: float
+    numeric_fields: int
+    categorical_fields: int
+    datetime_fields: int
+    filters: list[ExploreFilter]
+
+
+class CorrelationPair(BaseModel):
+    left: str
+    right: str
+    value: float
+
+
+class CorrelationPayload(BaseModel):
+    fields: list[str]
+    matrix: list[list[float | None]]
+    strongest_pairs: list[CorrelationPair]
+
+
+class DistributionPayload(BaseModel):
+    field: str
+    kind: Literal["numeric", "categorical"]
+    labels: list[str]
+    values: list[int]
+
+
+class AnomalyPayload(BaseModel):
+    row: int
+    field: str
+    value: Any
+    z_score: float
+
+
+class ExploreResponse(BaseModel):
+    dataset_id: str
+    revision: int
+    overview: ExploreOverview
+    correlations: CorrelationPayload
+    distributions: list[DistributionPayload]
+    anomalies: list[AnomalyPayload]
+    charts: list[ChartRecommendation]
 
 
 class ExploreRequest(BaseModel):
@@ -67,8 +106,7 @@ class LlmConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, value: AnyHttpUrl) -> AnyHttpUrl:
-        if value.username or value.password or value.query or value.fragment:
-            raise ValueError("base_url cannot contain credentials, a query, or a fragment")
+        validate_outbound_https_url(str(value), resolve_dns=False)
         return value
 
     @field_validator("model")

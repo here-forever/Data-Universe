@@ -12,6 +12,7 @@ import {
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { RecoverableError } from "../../app/RecoverableError";
+import "../../styles/universe.css";
 import { useCollaboration } from "../collaboration/collaborationState";
 import { LlmSettingsButton } from "../ai/LlmSettingsButton";
 import {

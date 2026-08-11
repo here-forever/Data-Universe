@@ -11,7 +11,9 @@ dependencies = [
     "numpy>=2.3.0",
     "openpyxl>=3.1.0",
     "pandas>=2.3.0",
+    "pyarrow>=21.0.0",
     "pydantic-settings>=2.11.0",
+    "prometheus-client>=0.23.0",
     "python-multipart>=0.0.20",
     "reportlab>=4.4.0",
     "scikit-learn>=1.7.0",
@@ -23,12 +25,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "pytest-cov>=7.0.0",
     "pytest>=9.0.0",
     "ruff>=0.14.0",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=60"
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = [
@@ -38,6 +41,9 @@ filterwarnings = [
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["alembic*"]
+
+[tool.setuptools.package-data]
+"app.i18n.resources" = ["*.json"]
 
 [tool.ruff]
 line-length = 100

@@ -8,6 +8,9 @@ from fastapi.testclient import TestClient
 def test_chat_completion_configuration_and_secret_redaction(
     client: TestClient, monkeypatch
 ) -> None:
+    monkeypatch.setattr(
+        "app.core.ssrf_guard.resolve_host_addresses", lambda _host, _port: ("93.184.216.34",)
+    )
     requests: list[dict] = []
 
     def fake_post(url, *, headers, json, timeout):
@@ -26,7 +29,7 @@ def test_chat_completion_configuration_and_secret_redaction(
         "api_style": "chat_completions",
     }
 
-    checked = client.post("/api/insights/llm/check", json=config)
+    checked = client.post("/api/v1/insights/llm/check", json=config)
     assert checked.status_code == 200, checked.text
     assert checked.json() == {
         "ok": True,
@@ -35,9 +38,9 @@ def test_chat_completion_configuration_and_secret_redaction(
         "message": "Connection verified",
     }
 
-    dataset_id = client.post("/api/datasets/demo").json()["id"]
+    dataset_id = client.post("/api/v1/datasets/demo").json()["id"]
     answer = client.post(
-        f"/api/insights/{dataset_id}/ask",
+        f"/api/v1/insights/{dataset_id}/ask",
         json={"question": "请解读最重要的关系", "llm": config},
     )
     assert answer.status_code == 200, answer.text
@@ -49,7 +52,7 @@ def test_chat_completion_configuration_and_secret_redaction(
     assert requests[-1]["headers"]["Authorization"] == "Bearer top-secret-key"
     assert requests[-1]["json"]["messages"][0]["role"] == "system"
 
-    history = client.get(f"/api/insights/{dataset_id}/history").json()
+    history = client.get(f"/api/v1/insights/{dataset_id}/history").json()
     recorded_request = history[0]["request"]
     assert recorded_request["llm"] == {
         "base_url": "https://llm.example.com/v1",
@@ -61,6 +64,10 @@ def test_chat_completion_configuration_and_secret_redaction(
 
 
 def test_responses_protocol_and_provider_error(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.core.ssrf_guard.resolve_host_addresses", lambda _host, _port: ("93.184.216.34",)
+    )
+
     def successful_post(url, **_):
         return httpx.Response(
             200,
@@ -75,7 +82,7 @@ def test_responses_protocol_and_provider_error(client: TestClient, monkeypatch) 
         "api_key": "secret",
         "api_style": "responses",
     }
-    checked = client.post("/api/insights/llm/check", json=config)
+    checked = client.post("/api/v1/insights/llm/check", json=config)
     assert checked.status_code == 200, checked.text
 
     def failed_post(url, **_):
@@ -86,10 +93,13 @@ def test_responses_protocol_and_provider_error(client: TestClient, monkeypatch) 
         )
 
     monkeypatch.setattr(httpx, "post", failed_post)
-    failed = client.post("/api/insights/llm/check", json=config)
+    failed = client.post("/api/v1/insights/llm/check", json=config)
     assert failed.status_code == 502
     assert failed.json()["error"]["code"] == "llm_connection_failed"
-    assert "Invalid API key" in failed.json()["error"]["message"]
+    assert failed.json()["error"]["message"] == (
+        "Unable to connect to the language model: The provider rejected the supplied credentials"
+    )
+    assert "Invalid API key" not in failed.text
 
 
 @pytest.mark.parametrize(
@@ -107,7 +117,7 @@ def test_invalid_user_llm_configuration_is_rejected(
     model: str,
 ) -> None:
     response = client.post(
-        "/api/insights/llm/check",
+        "/api/v1/insights/llm/check",
         json={
             "base_url": base_url,
             "model": model,

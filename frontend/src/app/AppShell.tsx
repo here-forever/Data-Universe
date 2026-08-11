@@ -50,11 +50,6 @@ function ShellFrame() {
     }
   }, [activeDatasetId, datasets.data, setActiveDataset]);
 
-  useEffect(() => {
-    document.documentElement.lang = language;
-    document.title = t("app.title");
-  }, [language, t]);
-
   const currentNavigation =
     navigationItems.find((item) =>
       item.end
@@ -62,6 +57,11 @@ function ShellFrame() {
         : location.pathname.startsWith(item.path),
     ) ?? navigationItems[0];
   const CurrentIcon = currentNavigation.icon;
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = `Vibe Data Universe · ${t(currentNavigation.labelKey)}`;
+  }, [currentNavigation.labelKey, language, t]);
 
   return (
     <div className="app-shell" data-language={language} data-theme={theme}>

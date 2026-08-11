@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vibe Data Universe · 界面设计方案</title>
+<style>
+/* ============================ TOKENS ============================ */
+:root[data-theme="dark"]{
+  --bg:#0c100f; --bg-2:#0f1413;
+  --surface:#131917; --surface-2:#1a201d; --surface-3:#21282400; --surface-3:#222a26;
+  --line:#2b342f; --line-2:#3a453e;
+  --text:#eaf2ee; --text-2:#c2cfc8; --text-3:#8a988f;
+  --primary:#4fe0c0; --primary-strong:#23b899; --primary-ink:#06241d;
+  --primary-soft:rgba(79,224,192,.12); --primary-line:rgba(79,224,192,.40);
+  --coral:#ff7d5e; --amber:#f5c04a; --lavender:#a08cf0; --sky:#6fb3ff;
+  --danger:#ff6b6b; --warning:#f5c04a; --success:#46d39a; --info:#6fb3ff;
+  --danger-soft:rgba(255,107,107,.12); --warning-soft:rgba(245,192,74,.12);
+  --success-soft:rgba(70,211,154,.12); --info-soft:rgba(111,179,255,.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow-md:0 8px 24px rgba(0,0,0,.40);
+  --shadow-lg:0 24px 64px rgba(0,0,0,.50);
+  --halo:radial-gradient(1200px 600px at 75% -10%,rgba(79,224,192,.10),transparent 60%),radial-gradient(900px 500px at 10% 110%,rgba(111,179,255,.08),transparent 55%);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#eef2f0; --bg-2:#f4f7f5;
+  --surface:#ffffff; --surface-2:#f7faf8; --surface-3:#eef2ef;
+  --line:#dbe2dd; --line-2:#c6d0ca;
+  --text:#15201c; --text-2:#3a4842; --text-3:#69776f;
+  --primary:#0a9c7e; --primary-strong:#077a62; --primary-ink:#ffffff;
+  --primary-soft:rgba(10,156,126,.10); --primary-line:rgba(10,156,126,.32);
+  --coral:#d9512f; --amber:#b9831a; --lavender:#6f5ed0; --sky:#2f7fc0;
+  --danger:#d6453f; --warning:#b9831a; --success:#1a9c6e; --info:#2f7fc0;
+  --danger-soft:rgba(214,69,63,.10); --warning-soft:rgba(185,131,26,.12);
+  --success-soft:rgba(26,156,110,.10); --info-soft:rgba(47,127,192,.10);
+  --shadow-sm:0 1px 2px rgba(16,33,28,.08);
+  --shadow-md:0 10px 28px rgba(16,33,28,.12);
+  --shadow-lg:0 28px 70px rgba(16,33,28,.16);
+  --halo:radial-gradient(1200px 600px at 75% -10%,rgba(10,156,126,.08),transparent 60%),radial-gradient(900px 500px at 10% 110%,rgba(47,127,192,.06),transparent 55%);
+  color-scheme:light;
+}
+:root{
+  --font:"Inter","SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,"Cascadia Code",monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-pill:999px;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s7:32px;--s8:48px;--s9:64px;
+  --t-fast:140ms ease; --t:240ms cubic-bezier(.2,.7,.2,1);
+  --maxw:1180px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--text);
+  line-height:1.6;-webkit-font-smoothing:antialiased;font-size:15px;
+}
+::selection{background:var(--primary-soft);color:var(--primary)}
+a{color:inherit;text-decoration:none}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--primary)}
+.mono{font-family:var(--mono)}
+h1,h2,h3,h4{line-height:1.2;font-weight:700;letter-spacing:-.01em}
+.muted{color:var(--text-3)}
+.soft{color:var(--text-2)}
+
+/* ============================ TOP BAR ============================ */
+.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:var(--s4);
+  padding:0 var(--s6);height:60px;border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(10px);
+}
+.brand{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.orb{position:relative;width:30px;height:30px;flex:0 0 30px;border:1px solid var(--primary-line);border-radius:50%}
+.orb::before{content:"";position:absolute;inset:5px;background:var(--primary);border-radius:50%;box-shadow:7px 6px 0 -3px var(--coral)}
+.orb::after{content:"";position:absolute;inset:-4px 3px 3px -4px;border-top:1px solid var(--amber);border-radius:50%;transform:rotate(35deg)}
+.brand b{font-size:16px;letter-spacing:-.01em}
+.brand small{display:block;font-size:10px;color:var(--text-3);letter-spacing:.12em;text-transform:uppercase}
+.topbar .spacer{flex:1}
+.theme-toggle{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r-pill);background:var(--surface-2);color:var(--text-2);font-size:12px;font-weight:600;cursor:pointer;transition:var(--t)}
+.theme-toggle:hover{color:var(--text);border-color:var(--primary-line)}
+.tag{font-size:11px;font-weight:600;color:var(--text-3);border:1px solid var(--line);padding:4px 10px;border-radius:var(--r-pill)}
+
+/* ============================ LAYOUT ============================ */
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);max-width:1480px;margin:0 auto}
+.nav{position:sticky;top:60px;align-self:start;height:calc(100dvh - 60px);overflow:auto;padding:var(--s6) var(--s4) var(--s8);border-right:1px solid var(--line)}
+.nav .nav-group{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin:var(--s5) 0 var(--s2) var(--s3)}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-sm);color:var(--text-2);font-size:13.5px;font-weight:500;transition:var(--t);border-left:2px solid transparent}
+.nav a:hover{background:var(--surface-2);color:var(--text)}
+.nav a.active{background:var(--primary-soft);color:var(--text);border-left-color:var(--primary)}
+.nav a .dot{width:6px;height:6px;border-radius:50%;background:var(--text-3)}
+.nav a.active .dot{background:var(--primary)}
+main{padding:0 var(--s7) var(--s9);min-width:0}
+section{padding:var(--s8) 0;border-bottom:1px solid var(--line)}
+section>header{margin-bottom:var(--s6)}
+section>header h2{font-size:28px;margin:var(--s2) 0 var(--s2)}
+section>header p{max-width:760px;color:var(--text-2);font-size:14.5px}
+.kicker{display:inline-flex;align-items:center;gap:8px;margin-bottom:var(--s3)}
+
+/* ============================ HERO ============================ */
+.hero{padding:var(--s9) 0 var(--s7);background:var(--halo)}
+.hero h1{font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-.02em;margin:var(--s3) 0 var(--s4)}
+.hero p{font-size:17px;color:var(--text-2);max-width:720px}
+.pill-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:var(--s6)}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line-2);border-radius:var(--r-pill);background:var(--surface);font-size:13px;color:var(--text-2)}
+.pill b{color:var(--text)}
+.hero-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s4);margin-top:var(--s7)}
+.hero-meta .card{padding:var(--s5);border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.hero-meta .card .n{font-size:26px;font-weight:700;color:var(--primary);font-family:var(--mono)}
+.hero-meta .card .l{font-size:12.5px;color:var(--text-3);margin-top:4px}
+
+/* ============================ CARDS / GRID ============================ */
+.card{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:var(--s5);transition:var(--t)}
+.card:hover{border-color:var(--line-2);box-shadow:var(--shadow-md)}
+.grid{display:grid;gap:var(--s5)}
+.cols-2{grid-template-columns:repeat(2,1fr)}
+.cols-3{grid-template-columns:repeat(3,1fr)}
+.cols-4{grid-template-columns:repeat(4,1fr)}
+
+/* ============================ COLOR SWATCHES ============================ */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--s4)}
+.swatch{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.swatch .chip{height:74px;display:grid;place-items:end;padding:10px;font-family:var(--mono);font-size:11px;color:#fff;mix-blend-mode:difference}
+.swatch .meta{padding:10px 12px}
+.swatch .meta b{font-size:13px;display:block}
+.swatch .meta span{font-size:11px;color:var(--text-3);font-family:var(--mono)}
+
+/* ============================ TYPE SCALE ============================ */
+.typescale{display:grid;gap:var(--s3)}
+.type-row{display:flex;align-items:baseline;gap:var(--s5);padding:var(--s3) 0;border-bottom:1px dashed var(--line)}
+.type-row .spec{width:120px;flex:0 0 120px;font-family:var(--mono);font-size:12px;color:var(--text-3)}
+.type-row .sample{flex:1;min-width:0}
+
+/* ============================ PAGE MOCKUPS ============================ */
+.device-bar{display:flex;align-items:center;gap:10px;margin-bottom:var(--s4)}
+.device-bar .label{font-size:12px;color:var(--text-3);margin-right:auto}
+.seg{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2)}
+.seg button{border:0;background:transparent;color:var(--text-2);font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--r-pill);cursor:pointer;transition:var(--t)}
+.seg button.active{background:var(--primary-soft);color:var(--primary)}
+
+.frame{margin:0 auto;border:1px solid var(--line);border-radius:14px;background:var(--bg-2);overflow:hidden;box-shadow:var(--shadow-md);transition:var(--t)}
+.frame--desktop{max-width:100%}
+.frame--tablet{max-width:820px}
+.frame--mobile{max-width:390px}
+.mkp{display:grid;background:var(--bg)}
+.mkp--work{grid-template-columns:200px minmax(0,1fr) 240px;height:480px}
+.mkp--lab{grid-template-columns:200px minmax(0,1fr) 240px;height:480px}
+.mkp--story{grid-template-columns:190px minmax(0,1fr) 260px;height:480px}
+.mkp--uni{height:480px;position:relative}
+.mkp .col{border-right:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.mkp .col:last-child{border-right:0}
+.mkp-head{height:42px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.08em;background:var(--surface)}
+.mkp-body{padding:12px;overflow:auto;flex:1;min-height:0}
+.mini-btn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--r-sm);font-size:11px;font-weight:600;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text-2);cursor:default}
+.mini-btn.primary{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+.ds-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-sm);font-size:12px;color:var(--text-2);cursor:default}
+.ds-row.active{background:var(--primary-soft);color:var(--text);font-weight:600}
+.ds-row .ic{width:7px;height:7px;border-radius:50%;background:var(--primary)}
+.tabs{display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--line);background:var(--surface)}
+.tabs span{flex:1;text-align:center;font-size:11px;font-weight:600;padding:7px;border-radius:var(--r-sm);color:var(--text-3)}
+.tabs span.active{background:var(--surface-3);color:var(--text)}
+.mini-table{width:100%;border-collapse:collapse;font-size:11px}
+.mini-table th,.mini-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);color:var(--text-2);white-space:nowrap}
+.mini-table th{color:var(--text-3);font-weight:600}
+.mini-table td .num{font-family:var(--mono)}
+.prof-card{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:9px;background:var(--surface)}
+.prof-card b{font-size:12px;display:block}
+.prof-card .meta{font-size:10.5px;color:var(--text-3);margin-top:3px}
+.ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;margin:8px auto;position:relative}
+.ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--surface);}
+.ring b{position:relative;font-size:22px;font-family:var(--mono);font-weight:700;z-index:1}
+.issue{display:flex;gap:8px;align-items:flex-start;font-size:11px;color:var(--text-2);padding:7px 0;border-bottom:1px dashed var(--line)}
+.issue .x{color:var(--danger);font-weight:700}
+.rec-card{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;margin-bottom:9px;background:var(--surface);cursor:default}
+.rec-card.active{border-color:var(--primary-line);box-shadow:var(--shadow-sm)}
+.rec-card .rank{display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.rec-card .rank b{color:var(--primary);font-family:var(--mono)}
+.rec-card .t{font-size:12.5px;font-weight:600}
+.rec-card .fit{height:5px;border-radius:4px;background:var(--surface-3);margin-top:7px;overflow:hidden}
+.rec-card .fit i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--sky));border-radius:4px}
+.chart-box{height:200px;border:1px dashed var(--line-2);border-radius:var(--r-sm);background:var(--surface);display:grid;place-items:center;color:var(--text-3);font-size:12px;position:relative;overflow:hidden}
+.chart-bars{display:flex;align-items:flex-end;gap:8px;height:140px;padding:0 10px}
+.chart-bars i{flex:1;background:linear-gradient(180deg,var(--primary),var(--primary-strong));border-radius:4px 4px 0 0;opacity:.85}
+.insights{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.insight{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px;background:var(--surface);font-size:11px;color:var(--text-2)}
+.insight b{color:var(--text);display:block;font-size:12px;margin-bottom:3px}
+.uni-canvas{position:absolute;inset:0;background:
+  radial-gradient(600px 400px at 60% 40%,rgba(79,224,192,.16),transparent 60%),
+  radial-gradient(400px 400px at 30% 70%,rgba(111,179,255,.12),transparent 60%),
+  var(--bg);}
+.uni-canvas .stars{position:absolute;inset:0;background-image:radial-gradient(1.4px 1.4px at 20% 30%,#fff,transparent),radial-gradient(1.4px 1.4px at 70% 60%,#cfe,transparent),radial-gradient(1px 1px at 45% 80%,#fff,transparent),radial-gradient(1.2px 1.2px at 85% 25%,#fff,transparent);opacity:.5}
+.uni-hud{position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.uni-metrics{display:flex;gap:18px}
+.uni-metrics div{font-size:11px;color:var(--text-3)}
+.uni-metrics b{display:block;font-size:17px;color:var(--text);font-family:var(--mono)}
+.uni-controls{position:absolute;left:16px;right:16px;bottom:14px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.map-ctl{display:flex;gap:6px;background:color-mix(in srgb,var(--surface) 80%,transparent);border:1px solid var(--line-2);border-radius:var(--r-md);padding:8px;backdrop-filter:blur(6px)}
+.map-ctl label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);display:block;margin-bottom:3px}
+.map-ctl select{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--text);font-size:11px;padding:4px 6px;font-family:var(--font)}
+.narrator{position:absolute;right:16px;top:54px;width:230px;background:color-mix(in srgb,var(--surface) 86%,transparent);border:1px solid var(--line-2);border-radius:var(--r-md);padding:12px;backdrop-filter:blur(8px)}
+.narrator .ai{font-size:11px;color:var(--primary);font-weight:700;margin-bottom:6px}
+.narrator p{font-size:11px;color:var(--text-2);line-height:1.5}
+.story-block{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:9px;background:var(--surface);font-size:12px}
+.story-block .ty{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);font-weight:700}
+.story-block .ty.q{color:var(--lavender)}.story-block .ty.c{color:var(--sky)}.story-block .ty.n{color:var(--amber)}
+.preview-read{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:18px;font-size:12px;color:var(--text-2);line-height:1.7}
+.preview-read h4{font-size:14px;color:var(--text);margin-bottom:8px}
+
+/* ============================ FLOWS ============================ */
+.flow{display:flex;flex-wrap:wrap;gap:0;align-items:stretch}
+.flow .step{flex:1;min-width:150px;position:relative;padding:var(--s4) var(--s4) var(--s4) 0}
+.flow .step .node{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);height:100%}
+.flow .step .num{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary);font-weight:700;font-size:12px;font-family:var(--mono)}
+.flow .step .tx b{font-size:13px;display:block}
+.flow .step .tx span{font-size:11px;color:var(--text-3)}
+.flow .step:not(:last-child)::after{content:"";position:absolute;top:50%;right:6px;width:18px;height:2px;background:var(--line-2)}
+.flow-detail{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--s4);margin-top:var(--s5)}
+.flow-detail .fd{border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s5);background:var(--surface)}
+.flow-detail .fd h4{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.flow-detail .fd ul{list-style:none;display:grid;gap:7px}
+.flow-detail .fd li{font-size:12.5px;color:var(--text-2);padding-left:18px;position:relative}
+.flow-detail .fd li::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;background:var(--primary)}
+
+/* ============================ COMPONENTS GALLERY ============================ */
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--s5)}
+.comp{border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s5);background:var(--surface)}
+.comp h4{font-size:13px;margin-bottom:4px}
+.comp .desc{font-size:11.5px;color:var(--text-3);margin-bottom:var(--s4)}
+.comp .stage{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:var(--r-sm);font-size:13px;font-weight:600;border:1px solid transparent;cursor:default;transition:var(--t)}
+.btn.primary{background:var(--primary);color:var(--primary-ink)}
+.btn.secondary{background:var(--surface-2);color:var(--text);border-color:var(--line-2)}
+.btn.ghost{background:transparent;color:var(--text-2);border-color:var(--line-2)}
+.btn.danger{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.btn.sm{height:30px;padding:0 11px;font-size:12px}
+.inp{height:38px;width:220px;max-width:100%;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface-2);color:var(--text);font-size:13px;font-family:var(--font)}
+.inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:var(--r-pill);font-size:11.5px;font-weight:600;background:var(--surface-3);color:var(--text-2);border:1px solid var(--line)}
+.chip.primary{background:var(--primary-soft);color:var(--primary);border-color:var(--primary-line)}
+.chip.success{background:var(--success-soft);color:var(--success)}
+.chip.warning{background:var(--warning-soft);color:var(--warning)}
+.chip.danger{background:var(--danger-soft);color:var(--danger)}
+.seg2{display:inline-flex;border:1px solid var(--line-2);border-radius:var(--r-sm);overflow:hidden;background:var(--surface-2)}
+.seg2 button{border:0;background:transparent;color:var(--text-2);font-size:12px;font-weight:600;padding:8px 14px;cursor:default}
+.seg2 button.active{background:var(--primary-soft);color:var(--primary)}
+.toast{display:inline-flex;align-items:center;gap:9px;padding:11px 14px;border-radius:var(--r-md);background:var(--surface-3);border:1px solid var(--line-2);font-size:12.5px;box-shadow:var(--shadow-sm)}
+.toast .ic{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--success-soft);color:var(--success);font-size:11px}
+.modal{width:320px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-lg);padding:var(--s5)}
+.modal h4{font-size:15px;margin-bottom:6px}
+.modal p{font-size:12.5px;color:var(--text-2);margin-bottom:var(--s4)}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end}
+.dropzone{border:1.5px dashed var(--line-2);border-radius:var(--r-md);padding:var(--s6);text-align:center;color:var(--text-3);background:var(--surface-2);font-size:13px}
+.state-row{display:flex;flex-wrap:wrap;gap:12px}
+.state-box{width:150px;border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4);text-align:center;background:var(--surface)}
+.state-box .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;margin:0 auto 8px;font-size:14px}
+.state-box.empty .ic{background:var(--surface-3);color:var(--text-3)}
+.state-box.error .ic{background:var(--danger-soft);color:var(--danger)}
+.state-box.loading .ic{background:var(--primary-soft);color:var(--primary);border:2px solid var(--primary);border-right-color:transparent;border-radius:50%;animation:spin 1s linear infinite;width:24px;height:24px}
+.state-box b{font-size:12px;display:block}
+.state-box span{font-size:10.5px;color:var(--text-3)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============================ RESPONSIVE TABLE ============================ */
+.brk{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:var(--s4)}
+.brk th,.brk td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--text-2)}
+.brk th{color:var(--text-3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.brk td code{font-family:var(--mono);font-size:12px;color:var(--primary);background:var(--primary-soft);padding:2px 6px;border-radius:4px}
+
+/* ============================ CALLOUT ============================ */
+.callout{border:1px solid var(--primary-line);background:var(--primary-soft);border-radius:var(--r-md);padding:var(--s5);display:flex;gap:14px;margin-top:var(--s5)}
+.callout .b{width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:var(--primary);color:var(--primary-ink);display:grid;place-items:center;font-weight:700}
+.callout p{font-size:13.5px;color:var(--text-2)}
+.callout p b{color:var(--text)}
+
+/* ============================ FOOTER ============================ */
+footer{padding:var(--s8) 0;color:var(--text-3);font-size:12px;text-align:center}
+
+/* ============================ RESPONSIVE ============================ */
+@media(max-width:1100px){
+  .shell{grid-template-columns:1fr}
+  .nav{display:none}
+  main{padding:0 var(--s5) var(--s8)}
+  .hero-meta{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:680px){
+  .cols-2,.cols-3,.cols-4{grid-template-columns:1fr}
+  .topbar{padding:0 var(--s4)}
+  .hero-meta{grid-template-columns:1fr}
+  section>header h2{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<div class="topbar">
+  <div class="brand">
+    <span class="orb"></span>
+    <span><b>Vibe Data Universe</b><small>数据宇宙 · 界面设计方案</small></span>
+  </div>
+  <span class="spacer"></span>
+  <span class="tag">UI Designer · v1.0</span>
+  <button class="theme-toggle" id="themeToggle" aria-label="切换主题">🌙 <span id="themeLabel">Nebula 暗色</span></button>
+</div>
+
+<div class="shell">
+  <!-- ===================== NAV ===================== -->
+  <nav class="nav" id="nav">
+    <div class="nav-group">概览</div>
+    <a href="#overview" class="active"><span class="dot"></span>设计总览</a>
+    <a href="#concept"><span class="dot"></span>设计理念与用户心智</a>
+    <div class="nav-group">基础</div>
+    <a href="#foundations"><span class="dot"></span>视觉令牌系统</a>
+    <a href="#typography"><span class="dot"></span>字体与排版</a>
+    <div class="nav-group">架构</div>
+    <a href="#ia"><span class="dot"></span>信息架构</a>
+    <a href="#navmodel"><span class="dot"></span>导航模型</a>
+    <div class="nav-group">界面</div>
+    <a href="#layouts"><span class="dot"></span>核心页面布局</a>
+    <a href="#flows"><span class="dot"></span>关键交互流程</a>
+    <div class="nav-group">规范</div>
+    <a href="#components"><span class="dot"></span>组件规范</a>
+    <a href="#responsive"><span class="dot"></span>响应式与无障碍</a>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main>
+
+    <!-- ===== HERO / OVERVIEW ===== -->
+    <section id="overview" class="hero" style="border-bottom:1px solid var(--line)">
+      <div class="kicker eyebrow">◇ 全新界面设计方案</div>
+      <h1>把数据，变成<br/>可以感知的宇宙。</h1>
+      <p>面向大学生、科研人员与数据分析初学者的本地优先探索系统。我们保留品牌标志性的「数据宇宙」气质，同时以更清晰的信息架构、更友好的引导与更严谨的可访问性，降低每一次数据分析的学习成本。</p>
+      <div class="pill-row">
+        <span class="pill"><b>目标用户</b> 学生 · 研究者 · 初学者</span>
+        <span class="pill"><b>设计原则</b> 引导式 · 直观 · 一致</span>
+        <span class="pill"><b>双主题</b> Nebula 暗 / Daybreak 亮</span>
+        <span class="pill"><b>合规</b> WCAG AA · 减少动效</span>
+      </div>
+      <div class="hero-meta">
+        <div class="card"><div class="n">4</div><div class="l">核心工作区</div></div>
+        <div class="card"><div class="n">6</div><div class="l">关键交互流程</div></div>
+        <div class="card"><div class="n">40+</div><div class="l">规范化组件</div></div>
+        <div class="card"><div class="n">3</div><div class="l">响应式断点</div></div>
+      </div>
+    </section>
+
+    <!-- ===== CONCEPT ===== -->
+    <section id="concept">
+      <header>
+        <div class="kicker eyebrow">◇ 设计理念</div>
+        <h2>顺着用户的心智，而非功能清单</h2>
+        <p>初学者并不把数据分析想成「模块」——他们想的是一条清晰的路：拿到数据、看懂它、收拾干净、问它问题、讲成故事、交出去。我们据此重建界面。</p>
+      </header>
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="eyebrow">引导式而非菜单式</div>
+          <h3 style="font-size:18px;margin:8px 0 6px">用工作流回答问题</h3>
+          <p class="soft" style="font-size:13.5px">首次进入即赠送演示数据并开启引导；常驻「工作流进度」让新手始终知道下一步去哪，老手可一键直达任一工作区。</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">结果要能读懂</div>
+          <h3 style="font-size:18px;margin:8px 0 6px">用大白话解释统计</h3>
+          <p class="soft" style="font-size:13.5px">每个图表、每项分析都附带「为什么推荐」「证据」「置信度」，把统计术语翻译成用户能行动的结论。</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">安心比炫技重要</div>
+          <h3 style="font-size:18px;margin:8px 0 6px">可逆、可重试、可确认</h3>
+          <p class="soft" style="font-size:13.5px">清洗生成新版本而非覆盖；删除前二次确认；请求失败原地重试；异常可全局恢复——降低误操作焦虑。</p>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="b">!</span>
+        <p><b>心智模型对齐：</b>把「上传 → 画像 → 清洗 → 分析 → 宇宙 → 故事 → 导出」做成一条贯穿全站的连续旅程，顶部「当前数据集」作为统一上下文，切换后所有工作区自动同步。</p>
+      </div>
+    </section>
+
+    <!-- ===== FOUNDATIONS ===== -->
+    <section id="foundations">
+      <header>
+        <div class="kicker eyebrow">◇ 视觉基础</div>
+        <h2>视觉令牌系统</h2>
+        <p>一套以「宇宙」为隐喻、却足够克制安静的色板。暗色 Nebula 是默认签名态（尤其契合 3D 探索），亮色 Daybreak 为课堂投影、长时间阅读与浅色偏好而设。所有组合均对齐 WCAG AA。</p>
+      </header>
+
+      <h3 style="font-size:16px;margin-bottom:14px">主色与语义色</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--primary)">Aurora Mint</div><div class="meta"><b>主色 · Primary</b><span id="c-primary">#4fe0c0</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--coral)">Coral</div><div class="meta"><b>珊瑚 · 强调</b><span>#ff7d5e</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--amber)">Amber</div><div class="meta"><b>琥珀 · 提示</b><span>#f5c04a</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--lavender)">Lavender</div><div class="meta"><b>薰衣草 · 叙事</b><span>#a08cf0</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--sky)">Sky</div><div class="meta"><b>天蓝 · 信息</b><span>#6fb3ff</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--success)">Success</div><div class="meta"><b>成功</b><span>#46d39a</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--warning)">Warning</div><div class="meta"><b>警告</b><span>#f5c04a</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--danger)">Danger</div><div class="meta"><b>危险</b><span>#ff6b6b</span></div></div>
+      </div>
+
+      <h3 style="font-size:16px;margin:32px 0 14px">中性与表面</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--bg)">Background</div><div class="meta"><b>画布背景</b><span>--bg</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--surface)">Surface</div><div class="meta"><b>卡片表面</b><span>--surface</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--surface-2)">Surface-2</div><div class="meta"><b>抬升表面</b><span>--surface-2</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--line)">Line</div><div class="meta"><b>描边 / 分隔</b><span>--line</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--text)">Text</div><div class="meta"><b>主文本</b><span>--text</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--text-2)">Text-2</div><div class="meta"><b>次要文本</b><span>--text-2</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--text-3)">Muted</div><div class="meta"><b>辅助 / 标签</b><span>--text-3</span></div></div>
+      </div>
+
+      <div class="callout" style="margin-top:24px">
+        <span class="b">✓</span>
+        <p><b>对比度基线：</b>正文文本 ≥ 4.5:1、大字与图标 ≥ 3:1。主色按钮在暗色用深色字、亮色用白色字，均满足 AA。演示数据色始终提供文字/图案双重编码，不依赖颜色单独传达质量状态。</p>
+      </div>
+    </section>
+
+    <!-- ===== TYPOGRAPHY ===== -->
+    <section id="typography">
+      <header>
+        <div class="kicker eyebrow">◇ 字体与排版</div>
+        <h2>清晰优先的排版层级</h2>
+        <p>正文 Inter / 苹方 / 微软雅黑，数字与代码用等宽字体增强可读性。最小正文 14px、辅助标签 11px，避免原系统中 9–10px 小字的辨识负担。</p>
+      </header>
+      <div class="card">
+        <div class="typescale">
+          <div class="type-row"><span class="spec">Display · 36/48</span><div class="sample"><div style="font-size:36px;font-weight:700">数据宇宙 Data Universe</div></div></div>
+          <div class="type-row"><span class="spec">H1 · 28/34</span><div class="sample"><div style="font-size:28px;font-weight:700">分析实验室</div></div></div>
+          <div class="type-row"><span class="spec">H2 · 20/26</span><div class="sample"><div style="font-size:20px;font-weight:700">相关性矩阵</div></div></div>
+          <div class="type-row"><span class="spec">Body · 14/22</span><div class="sample"><div style="font-size:14px">系统自动扫描当前数据集并生成图表方案，每个方案都附带推荐原因与数据证据。</div></div></div>
+          <div class="type-row"><span class="spec">Caption · 12/18</span><div class="sample"><div style="font-size:12px;color:var(--text-3)">推断类型 · 缺失比例 · 唯一值数量</div></div></div>
+          <div class="type-row"><span class="spec">Mono · 13</span><div class="sample"><div class="mono" style="font-size:13px;color:var(--primary)">R² = 0.87 · RMSE = 4.21 · p &lt; 0.01</div></div></div>
+        </div>
+      </div>
+      <div class="grid cols-3" style="margin-top:24px">
+        <div class="card"><div class="eyebrow">间距 · 4pt 基线</div><p class="soft" style="font-size:13px;margin-top:6px">4 / 8 / 12 / 16 / 24 / 32 / 48 / 64。统一节奏，组件内边距默认 16，区块间距 24。</p></div>
+        <div class="card"><div class="eyebrow">圆角</div><p class="soft" style="font-size:13px;margin-top:6px">控件 6 · 卡片 10 · 大面板 16 · 胶囊 999。柔和不尖锐，呼应「宇宙」的流动感。</p></div>
+        <div class="card"><div class="eyebrow">动效</div><p class="soft" style="font-size:13px;margin-top:6px">140ms 快 / 240ms 标准缓动；全局尊重 prefers-reduced-motion，3D 后处理可一键关闭。</p></div>
+      </div>
+    </section>
+
+    <!-- ===== IA ===== -->
+    <section id="ia">
+      <header>
+        <div class="kicker eyebrow">◇ 信息架构</div>
+        <h2>以旅程为主线的工作区结构</h2>
+        <p>四大工作区沿数据生命周期排布，顶部「当前数据集」作为统一上下文。新增「新手引导」与「工作流进度」两块引导层，兼顾初学者与熟练用户。</p>
+      </header>
+      <div class="grid cols-4">
+        <div class="card"><div class="eyebrow">01 · 接入</div><h3 style="font-size:17px;margin:6px 0">数据工作台</h3><p class="soft" style="font-size:12.5px">上传 CSV/Excel/JSON/TXT，查看预览与字段画像，版本化清洗。</p></div>
+        <div class="card"><div class="eyebrow">02 · 洞察</div><h3 style="font-size:17px;margin:6px 0">分析实验室</h3><p class="soft" style="font-size:12.5px">智能图表推荐、相关性矩阵、自然语言问数、高级统计。</p></div>
+        <div class="card"><div class="eyebrow">03 · 沉浸</div><h3 style="font-size:17px;margin:6px 0">数据宇宙</h3><p class="soft" style="font-size:12.5px">3D 粒子叙事，映射轴与颜色，巡检粒子，AI 解说。</p></div>
+        <div class="card"><div class="eyebrow">04 · 表达</div><h3 style="font-size:17px;margin:6px 0">故事编辑器</h3><p class="soft" style="font-size:12.5px">把指标、图表与叙事编排成故事流，导出 HTML / PDF。</p></div>
+      </div>
+      <div class="callout">
+        <span class="b">⇄</span>
+        <p><b>常驻上下文：</b>所有工作区共享同一「当前数据集」。顶栏数据集选择器变更后，宇宙、工作台、实验室、故事同步切换——这是初学者最容易困惑的点，统一后心智负担显著降低。</p>
+      </div>
+    </section>
+
+    <!-- ===== NAV MODEL ===== -->
+    <section id="navmodel">
+      <header>
+        <div class="kicker eyebrow">◇ 导航模型</div>
+        <h2>三层导航，逐级收束注意力</h2>
+        <p>左/底栏负责「去哪个工作区」；工作区内的步骤器负责「我现在在哪一步」；内容区标签负责「这一屏看什么」。三层各司其职，避免一个导航塞下所有信息。</p>
+      </header>
+      <div class="grid cols-3">
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px">① 全局工作区导航</h4>
+          <p class="soft" style="font-size:13px">桌面左侧 208px 轨道（窄屏收为 72px 图标），移动端固定底部 4 项。含品牌、工作流进度入口、协作在线状态。</p>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px">② 工作流进度器</h4>
+          <p class="soft" style="font-size:13px">新手模式顶部显示「接入 → 画像 → 清洗 → 分析 → 叙事 → 导出」进度链，可点击跳转；专家模式可隐藏。</p>
+        </div>
+        <div class="card">
+          <h4 style="font-size:15px;margin-bottom:8px">③ 内容区标签 / 面板</h4>
+          <p class="soft" style="font-size:13px">工作台内的「预览 / 画像 / 清洗」、实验室内的「探索 / 问数 / 统计」用分段标签切换，降低页面跳转。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LAYOUTS ===== -->
+    <section id="layouts">
+      <header>
+        <div class="kicker eyebrow">◇ 核心页面布局</div>
+        <h2>四大工作区线框（真实渲染）</h2>
+        <p>下面是按新规范直接渲染的页面骨架，可在桌面 / 平板 / 手机三种尺寸下预览。布局遵循统一的「左浏览 · 中工作 · 右洞察」三栏节奏。</p>
+      </header>
+
+      <!-- WORKBENCH -->
+      <h3 style="font-size:16px;margin:28px 0 12px">数据工作台 · Data Workbench</h3>
+      <div class="device-bar">
+        <span class="label">数据集浏览器 + 预览/画像/清洗 + 质量洞察</span>
+        <div class="seg" data-seg="wb"><button class="active" data-dev="desktop">桌面</button><button data-dev="tablet">平板</button><button data-dev="mobile">手机</button></div>
+      </div>
+      <div class="frame frame--desktop" data-frame="wb">
+        <div class="mkp mkp--work">
+          <div class="col">
+            <div class="mkp-head">数据集</div>
+            <div class="mkp-body">
+              <div class="ds-row active"><span class="ic"></span>校园学习节律</div>
+              <div class="ds-row"><span class="ic"></span>销售流水 2025</div>
+              <div class="ds-row"><span class="ic"></span>气温观测</div>
+              <div style="margin-top:10px"><span class="mini-btn primary">＋ 接入文件</span></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="tabs"><span class="active">数据预览</span><span>字段画像</span><span>版本化清洗</span></div>
+            <div class="mkp-body">
+              <table class="mini-table">
+                <thead><tr><th>学号</th><th>院系</th><th>学习时长</th><th>睡眠</th><th>成绩</th></tr></thead>
+                <tbody>
+                  <tr><td class="num">S001</td><td>计算机</td><td class="num">5.2</td><td class="num">7.1</td><td class="num">88</td></tr>
+                  <tr><td class="num">S002</td><td>物理</td><td class="num">6.0</td><td class="num">6.4</td><td class="num">91</td></tr>
+                  <tr><td class="num">S003</td><td>中文</td><td class="num">3.8</td><td class="num">8.0</td><td class="num">79</td></tr>
+                  <tr><td class="num">S004</td><td>计算机</td><td class="num">4.5</td><td class="num">6.9</td><td class="num">—</td></tr>
+                </tbody>
+              </table>
+              <p class="muted" style="font-size:11px;margin-top:8px">分页读取 · 仅渲染可见行 · 缺失值以「—」标注</p>
+            </div>
+          </div>
+          <div class="col">
+            <div class="mkp-head">数据质量</div>
+            <div class="mkp-body">
+              <div class="ring" style="background:conic-gradient(var(--success) 0 86%,var(--surface-3) 86% 100%)"><b>86</b></div>
+              <div class="issue"><span class="x">!</span>1 个缺失单元格（成绩）</div>
+              <div class="issue"><span class="x">!</span>0 重复行</div>
+              <div class="issue"><span class="x">!</span>2 个待关注字段</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYSIS LAB -->
+      <h3 style="font-size:16px;margin:36px 0 12px">分析实验室 · Analysis Lab</h3>
+      <div class="device-bar">
+        <span class="label">智能推荐 + 图表 + 相关性/异常洞察</span>
+        <div class="seg" data-seg="lab"><button class="active" data-dev="desktop">桌面</button><button data-dev="tablet">平板</button><button data-dev="mobile">手机</button></div>
+      </div>
+      <div class="frame frame--desktop" data-frame="lab">
+        <div class="mkp mkp--lab">
+          <div class="col">
+            <div class="mkp-head">推荐图表</div>
+            <div class="mkp-body">
+              <div class="rec-card active"><div class="rank"><span>① 趋势折线</span><b>92</b></div><div class="t">学习时长 vs 成绩</div><div class="fit"><i style="width:92%"></i></div></div>
+              <div class="rec-card"><div class="rank"><span>② 分组柱状</span><b>81</b></div><div class="t">院系均分对比</div><div class="fit"><i style="width:81%"></i></div></div>
+              <div class="rec-card"><div class="rank"><span>③ 散点</span><b>74</b></div><div class="t">睡眠-成绩关系</div><div class="fit"><i style="width:74%"></i></div></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="tabs"><span class="active">探索</span><span>与数据对话</span><span>高级统计</span></div>
+            <div class="mkp-body">
+              <div class="chart-box">
+                <div class="chart-bars"><i style="height:40%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:80%"></i><i style="height:70%"></i><i style="height:92%"></i><i style="height:66%"></i></div>
+              </div>
+              <div class="insights">
+                <div class="insight"><b>最强关系</b>学习时长 ↔ 成绩（r=0.71）</div>
+                <div class="insight"><b>异常线索</b>学号 S007 成绩偏离 2.3σ</div>
+                <div class="insight"><b>置信度</b>高 · 样本 1,024 行</div>
+                <div class="insight"><b>建议</b>按院系分层再看趋势</div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="mkp-head">分析历史</div>
+            <div class="mkp-body">
+              <div class="prof-card"><b>线性回归</b><div class="meta">R² 0.87 · 已存入故事</div></div>
+              <div class="prof-card"><b>相关性矩阵</b><div class="meta">生成于 2 分钟前</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UNIVERSE -->
+      <h3 style="font-size:16px;margin:36px 0 12px">数据宇宙 · Data Universe</h3>
+      <div class="device-bar">
+        <span class="label">3D 粒子叙事 + 映射控制 + AI 解说</span>
+        <div class="seg" data-seg="uni"><button class="active" data-dev="desktop">桌面</button><button data-dev="tablet">平板</button><button data-dev="mobile">手机</button></div>
+      </div>
+      <div class="frame frame--desktop" data-frame="uni">
+        <div class="mkp mkp--uni">
+          <div class="uni-canvas"><div class="stars"></div></div>
+          <div class="uni-hud">
+            <div>
+              <div class="eyebrow">◇ 数据宇宙</div>
+              <h3 style="font-size:22px;margin-top:4px">校园学习节律</h3>
+            </div>
+            <div class="uni-metrics">
+              <div><b>1,024</b>粒子</div>
+              <div><b>7</b>维度</div>
+              <div><b>3</b>聚类</div>
+            </div>
+          </div>
+          <div class="narrator">
+            <div class="ai">✦ AI 数据解说员</div>
+            <p>学习时长与成绩呈正相关；睡眠低于 6.5h 的群体成绩明显偏低，建议优先关注。</p>
+          </div>
+          <div class="uni-controls">
+            <div class="map-ctl"><div><label>X 轴</label><select><option>学习时长</option><option>睡眠</option></select></div><div><label>Y 轴</label><select><option>成绩</option></select></div><div><label>颜色</label><select><option>院系</option></select></div></div>
+            <span class="mini-btn primary">⏸ 巡航</span><span class="mini-btn">↺ 重置</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STORY -->
+      <h3 style="font-size:16px;margin:36px 0 12px">故事编辑器 · Story Studio</h3>
+      <div class="device-bar">
+        <span class="label">故事浏览 + 段落编排 + 实时预览</span>
+        <div class="seg" data-seg="story"><button class="active" data-dev="desktop">桌面</button><button data-dev="tablet">平板</button><button data-dev="mobile">手机</button></div>
+      </div>
+      <div class="frame frame--desktop" data-frame="story">
+        <div class="mkp mkp--story">
+          <div class="col">
+            <div class="mkp-head">我的故事</div>
+            <div class="mkp-body">
+              <div class="ds-row active">学习节律洞察</div>
+              <div class="ds-row">睡眠质量报告</div>
+              <div style="margin-top:10px"><span class="mini-btn primary">＋ 新建</span></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="mkp-head">编辑</div>
+            <div class="mkp-body">
+              <div class="story-block"><div class="ty">开场</div>校园学习节律：一次数据漫游</div>
+              <div class="story-block"><div class="ty c">图表</div>学习时长 vs 成绩趋势</div>
+              <div class="story-block"><div class="ty q">质量</div>数据完整度 86%</div>
+              <div class="story-block"><div class="ty n">叙事</div>睡眠是隐藏变量……</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="mkp-head">预览</div>
+            <div class="mkp-body">
+              <div class="preview-read">
+                <h4>学习节律洞察</h4>
+                数据显示，学习时长与课程成绩之间呈现清晰的正相关。值得注意的是，睡眠时长低于 6.5 小时的样本，其成绩分布整体下移。
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px"><span class="mini-btn primary">导出 HTML</span><span class="mini-btn">导出 PDF</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FLOWS ===== -->
+    <section id="flows">
+      <header>
+        <div class="kicker eyebrow">◇ 关键交互流程</div>
+        <h2>六条主线，覆盖从第一次打开到交付</h2>
+        <p>每条流程都围绕「降低决策成本」设计：给默认、给解释、给撤销。下面先给出贯穿全站的主工作流，再拆解关键子流程。</p>
+      </header>
+
+      <h3 style="font-size:16px;margin-bottom:14px">主线：数据探索旅程</h3>
+      <div class="flow">
+        <div class="step"><div class="node"><span class="num">1</span><div class="tx"><b>接入</b><span>上传或试用演示数据</span></div></div></div>
+        <div class="step"><div class="node"><span class="num">2</span><div class="tx"><b>画像</b><span>自动类型与质量评分</span></div></div></div>
+        <div class="step"><div class="node"><span class="num">3</span><div class="tx"><b>清洗</b><span>版本化、可逆</span></div></div></div>
+        <div class="step"><div class="node"><span class="num">4</span><div class="tx"><b>分析</b><span>推荐图表与问数</span></div></div></div>
+        <div class="step"><div class="node"><span class="num">5</span><div class="tx"><b>宇宙</b><span>3D 叙事</span></div></div></div>
+        <div class="step"><div class="node"><span class="num">6</span><div class="tx"><b>叙事</b><span>导出 HTML/PDF</span></div></div></div>
+      </div>
+
+      <div class="flow-detail">
+        <div class="fd">
+          <h4>🌱 首次引导</h4>
+          <ul>
+            <li>检测无数据集 → 自动创建演示数据</li>
+            <li>三步高亮导览：数据集、工作区、导出</li>
+            <li>「跳过引导」常驻，绝不阻塞</li>
+          </ul>
+        </div>
+        <div class="fd">
+          <h4>📥 导入数据</h4>
+          <ul>
+            <li>拖拽落区 + 格式提示（≤128MiB/50万行）</li>
+            <li>即时进度与失败原因定位</li>
+            <li>完成后直接跳转画像并给出质量分</li>
+          </ul>
+        </div>
+        <div class="fd">
+          <h4>🧹 版本化清洗</h4>
+          <ul>
+            <li>操作生成新修订，不覆盖原始</li>
+            <li>每步显示处理前后行数差异</li>
+            <li>修订历史可回溯、可对比</li>
+          </ul>
+        </div>
+        <div class="fd">
+          <h4>💬 自然语言问数</h4>
+          <ul>
+            <li>本地统计证据引擎先答，零配置可用</li>
+            <li>答案附「证据来源」与置信度</li>
+            <li>可选外部模型，仅发聚合画像不發原行</li>
+          </ul>
+        </div>
+        <div class="fd">
+          <h4>🌌 宇宙探索</h4>
+          <ul>
+            <li>一键推荐轴/颜色映射</li>
+            <li>点击粒子查看该行摘要</li>
+            <li>低端设备可关后处理，保帧率</li>
+          </ul>
+        </div>
+        <div class="fd">
+          <h4>📤 故事导出</h4>
+          <ul>
+            <li>右侧实时预览阅读效果</li>
+            <li>HTML（可再定制）/ PDF（可归档）</li>
+            <li>导出失败给重试，不丢已编辑内容</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== COMPONENTS ===== -->
+    <section id="components">
+      <header>
+        <div class="kicker eyebrow">◇ 组件规范</div>
+        <h2>统一组件库：状态、可访问性、一致性</h2>
+        <p>所有交互元素遵循同一套令牌与尺寸。按钮 38px 触控高度、焦点环统一、禁用态明确。下面对照展示常用组件及其变体。</p>
+      </header>
+
+      <div class="comp-grid">
+        <div class="comp"><h4>按钮 Buttons</h4><div class="desc">主 / 次 / 幽灵 / 危险，含小尺寸</div><div class="stage"><span class="btn primary">主操作</span><span class="btn secondary">次操作</span><span class="btn ghost">幽灵</span><span class="btn danger">删除</span><span class="btn primary sm">小</span></div></div>
+
+        <div class="comp"><h4>输入框 Input</h4><div class="desc">38px 高，聚焦显主色环</div><div class="stage"><input class="inp" placeholder="搜索字段、提问……"/></div></div>
+
+        <div class="comp"><h4>分段标签 Segmented</h4><div class="desc">工作区内视图切换</div><div class="stage"><div class="seg2"><button class="active">预览</button><button>画像</button><button>清洗</button></div></div></div>
+
+        <div class="comp"><h4>标签 / 状态 Chip</h4><div class="desc">分类、置信度、状态</div><div class="stage"><span class="chip primary">高置信</span><span class="chip success">成功</span><span class="chip warning">待关注</span><span class="chip danger">异常</span><span class="chip">文本</span></div></div>
+
+        <div class="comp"><h4>质量评分环</h4><div class="desc">0–100，颜色 + 数字双编码</div><div class="stage"><div class="ring" style="background:conic-gradient(var(--success) 0 86%,var(--surface-3) 86% 100%);width:72px;height:72px"><b style="font-size:18px">86</b></div></div></div>
+
+        <div class="comp"><h4>确认对话框 Dialog</h4><div class="desc">删除前二次确认，可取消/Esc</div><div class="stage"><div class="modal"><h4>删除数据集？</h4><p>「校园学习节律」及其 3 个修订版本将被移除，此操作可撤销。</p><div class="acts"><span class="btn ghost sm">取消</span><span class="btn danger sm">确认删除</span></div></div></div></div>
+
+        <div class="comp"><h4>提示 Toast</h4><div class="desc">操作结果轻反馈</div><div class="stage"><span class="toast"><span class="ic">✓</span>清洗版本已保存</span></div></div>
+
+        <div class="comp"><h4>拖拽落区 Dropzone</h4><div class="desc">文件接入入口</div><div class="stage" style="width:100%"><div class="dropzone">拖入 CSV / Excel / JSON / TXT，或点击选择</div></div></div>
+
+        <div class="comp"><h4>状态 State</h4><div class="desc">空 / 错误 / 加载，均有行动指引</div><div class="stage"><div class="state-box empty"><div class="ic">∅</div><b>暂无数据</b><span>上传或试用演示</span></div><div class="state-box error"><div class="ic">!</div><b>读取失败</b><span>重试</span></div><div class="state-box loading"><div class="ic"></div><b>加载中</b><span>正在画像</span></div></div></div>
+      </div>
+    </section>
+
+    <!-- ===== RESPONSIVE ===== -->
+    <section id="responsive">
+      <header>
+        <div class="kicker eyebrow">◇ 响应式与无障碍</div>
+        <h2>三断点一致，主题随心切换</h2>
+        <p>移动端主航行固定于底部、内容单列、对话框转为底部抽屉；平板收窄左轨为图标；桌面释放完整三栏。亮/暗主题一键切换并记忆偏好。</p>
+      </header>
+      <table class="brk">
+        <thead><tr><th>断点</th><th>范围</th><th>导航</th><th>布局策略</th></tr></thead>
+        <tbody>
+          <tr><td><code>mobile</code></td><td>≤ 760px</td><td>底部 4 项固定</td><td>单列；对话框=底部抽屉；图表横向滚动</td></tr>
+          <tr><td><code>tablet</code></td><td>761–1020px</td><td>左轨收为 72px 图标</td><td>浏览器/质量面板转横向；推荐列横向滚动</td></tr>
+          <tr><td><code>desktop</code></td><td>1021–1280px</td><td>左轨 208px 全展开</td><td>完整三栏工作区</td></tr>
+          <tr><td><code>large</code></td><td>≥ 1281px</td><td>左轨 + 居中 max 宽</td><td>放宽间距，提升信息密度舒适度</td></tr>
+        </tbody>
+      </table>
+
+      <div class="grid cols-3" style="margin-top:24px">
+        <div class="card"><div class="eyebrow">键盘可达</div><p class="soft" style="font-size:13px;margin-top:6px">全功能可 Tab 操作；焦点环统一 2px 主色 + 偏移；对话框 Esc 关闭、焦点陷阱。</p></div>
+        <div class="card"><div class="eyebrow">屏幕阅读</div><p class="soft" style="font-size:13px;margin-top:6px">语义化标签、aria 角色；图表附文本摘要，不靠颜色单独传信息。</p></div>
+        <div class="card"><div class="eyebrow">减少动效</div><p class="soft" style="font-size:13px;margin-top:6px">尊重系统偏好；3D 后处理、自动巡航、粒子力场均可独立关闭。</p></div>
+      </div>
+
+      <div class="callout">
+        <span class="b">★</span>
+        <p><b>交付建议：</b>本方案建议沿用现有 React + Vite + CSS 变量架构，将上述令牌沉淀为 <code style="font-family:var(--mono);color:var(--primary)">:root</code> 与 <code style="font-family:var(--mono);color:var(--primary)">[data-theme]</code>；组件以 CSS Module + 设计令牌实现，确保暗/亮双主题零成本切换。</p>
+      </div>
+    </section>
+
+    <footer>
+      Vibe Data Universe · 界面设计方案 v1.0 — 由 UI Designer 基于目标用户心智模型构建 · 本页为自包含交互原型，可直接在浏览器打开评审。
+    </footer>
+  </main>
+</div>
+
+<script>
+/* Theme toggle */
+const root=document.documentElement;
+const tBtn=document.getElementById('themeToggle');
+const tLabel=document.getElementById('themeLabel');
+const cPrimary=document.getElementById('c-primary');
+function applyTheme(t){
+  root.setAttribute('data-theme',t);
+  tLabel.textContent=t==='dark'?'Nebula 暗色':'Daybreak 亮色';
+  tBtn.firstChild.textContent=t==='dark'?'🌙 ':'☀️ ';
+  cPrimary.textContent=t==='dark'?'#4fe0c0':'#0a9c7e';
+  try{localStorage.setItem('vdu-theme',t);}catch(e){}
+}
+try{const saved=localStorage.getItem('vdu-theme');if(saved)applyTheme(saved);}catch(e){}
+tBtn.addEventListener('click',()=>applyTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'));
+
+/* Device preview toggles */
+document.querySelectorAll('.seg[data-seg]').forEach(seg=>{
+  const frame=document.querySelector('[data-frame="'+seg.dataset.seg+'"]');
+  seg.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      seg.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      frame.className='frame frame--'+b.dataset.dev;
+    });
+  });
+});
+
+/* Scroll spy nav */
+const links=[...document.querySelectorAll('.nav a')];
+const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const a=map.get(e.target.id); if(a)a.classList.add('active');
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+document.querySelectorAll('main section').forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

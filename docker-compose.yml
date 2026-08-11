@@ -5,7 +5,7 @@ services:
       dockerfile: docker/backend.Dockerfile
     environment:
       APP_ENV: ${APP_ENV:-development}
-      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_DEBUG: ${APP_DEBUG:-false}
       BACKEND_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
       DATABASE_URL: sqlite+pysqlite:////app/storage/vibe-data.db
       DATA_STORAGE_ROOT: /app/storage/datasets
@@ -30,7 +30,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).read()",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=5).read()",
         ]
       interval: 10s
       timeout: 5s
@@ -40,10 +40,10 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
-    environment:
-      VITE_API_BASE_URL: http://127.0.0.1:8000/api
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8000/api/v1}
     ports:
-      - "5173:5173"
+      - "5173:8080"
     depends_on:
       backend:
         condition: service_healthy
@@ -51,9 +51,11 @@ services:
       test:
         [
           "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:5173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:8080/healthz",
         ]
       interval: 10s
       timeout: 5s

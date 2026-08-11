@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings, get_settings
 from app.core.database import get_db_session
+from app.data.parser import spool_upload
 from app.data.schemas import (
     CleaningRequest,
     DatasetDetail,
@@ -28,10 +30,14 @@ def list_datasets(dataset_service: DatasetService = Depends(service)) -> list[Da
 async def upload_dataset(
     file: UploadFile = File(...),
     name: str | None = Form(default=None),
+    settings: Settings = Depends(get_settings),
     dataset_service: DatasetService = Depends(service),
 ) -> DatasetDetail:
-    content = await file.read()
-    return dataset_service.create_upload(file.filename or "dataset.csv", content, name)
+    content = await spool_upload(file, settings)
+    try:
+        return dataset_service.create_upload(file.filename or "dataset.csv", content, name)
+    finally:
+        content.close()
 
 
 @router.post("/demo", response_model=DatasetDetail, status_code=status.HTTP_201_CREATED)

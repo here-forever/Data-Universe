@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -93,7 +93,7 @@ describe("AppShell", () => {
 
     await user.click(screen.getByRole("button", { name: "Switch to English" }));
 
-    const primaryNavigation = screen.getByRole("complementary", {
+    const primaryNavigation = await screen.findByRole("complementary", {
       name: "Primary navigation",
     });
     expect(
@@ -118,5 +118,13 @@ describe("AppShell", () => {
     await user.hover(screen.getByRole("link", { name: /分析实验室/ }));
 
     expect(preloadRoute).toHaveBeenCalledWith("/analysis");
+  });
+
+  test("页面标题随当前工作区更新", async () => {
+    renderWithProviders(<AppShell />, { route: "/analysis" });
+
+    await waitFor(() =>
+      expect(document.title).toBe("Vibe Data Universe · 分析实验室"),
+    );
   });
 });

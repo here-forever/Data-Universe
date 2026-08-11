@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import colorsys
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 from uuid import uuid4
 
 import numpy as np
@@ -23,9 +24,17 @@ from app.data.schemas import (
     ParticleResponse,
     RowPage,
 )
+from app.data.storage import (
+    clear_frame_cache,
+    read_frame,
+    read_page,
+    read_preview,
+    read_sample,
+    write_frame,
+)
 from app.models import Dataset, DatasetRevision
 
-PARTICLE_COLORS = ("#64e6c4", "#ff8364", "#f7c95c", "#8ea1ff", "#e58ad9", "#79c7ff")
+PARTICLE_BASE_COLORS = ("#64e6c4", "#ff8364", "#f7c95c", "#8ea1ff", "#e58ad9", "#79c7ff")
 
 
 class DatasetService:
@@ -38,7 +47,7 @@ class DatasetService:
         return [self._summary(dataset) for dataset in self.repository.list()]
 
     def create_upload(
-        self, filename: str, content: bytes, name: str | None = None
+        self, filename: str, content: BinaryIO | bytes, name: str | None = None
     ) -> DatasetDetail:
         frame = parse_upload(filename, content, self.settings)
         return self._create_dataset(
@@ -69,23 +78,23 @@ class DatasetService:
     def detail(self, dataset_id: str) -> DatasetDetail:
         dataset = self._get(dataset_id)
         revision = self.repository.active_revision(dataset)
-        frame = self._read_frame(revision.storage_path)
+        frame = read_preview(revision.storage_path, self.settings.preview_rows)
         return self._detail(dataset, revision, frame)
 
     def rows(self, dataset_id: str, offset: int, limit: int) -> RowPage:
         dataset = self._get(dataset_id)
         revision = self.repository.active_revision(dataset)
-        frame = self._read_frame(revision.storage_path)
         safe_offset = max(0, offset)
         safe_limit = min(max(1, limit), 200)
+        total, columns, frame = read_page(revision.storage_path, safe_offset, safe_limit)
         return RowPage(
             dataset_id=dataset.id,
             revision=revision.revision,
             offset=safe_offset,
             limit=safe_limit,
-            total=len(frame),
-            columns=list(frame.columns),
-            rows=frame_rows(frame, safe_limit, safe_offset),
+            total=total,
+            columns=columns,
+            rows=frame_rows(frame, safe_limit),
         )
 
     def clean(self, dataset_id: str, payload: CleaningRequest) -> DatasetDetail:
@@ -102,7 +111,12 @@ class DatasetService:
             elif step.action == "drop_missing":
                 frame = frame.dropna(subset=step.columns or None).reset_index(drop=True)
             elif step.action == "fill_missing":
-                assert step.column is not None and step.strategy is not None
+                if step.column is None or step.strategy is None:
+                    raise AppError(
+                        "fill_missing requires a column and strategy",
+                        "invalid_cleaning_step",
+                        422,
+                    )
                 value = self._fill_value(frame[step.column], step.strategy, step.value)
                 if step.strategy in {"mean", "median"}:
                     numeric = pd.to_numeric(frame[step.column], errors="coerce").astype("Float64")
@@ -113,7 +127,8 @@ class DatasetService:
                     except TypeError:
                         frame[step.column] = frame[step.column].astype(object).fillna(value)
             elif step.action == "flag_outliers":
-                assert step.column is not None
+                if step.column is None:
+                    raise AppError("flag_outliers requires a column", "invalid_cleaning_step", 422)
                 numeric = pd.to_numeric(frame[step.column], errors="coerce")
                 q1 = numeric.quantile(0.25)
                 q3 = numeric.quantile(0.75)
@@ -154,8 +169,8 @@ class DatasetService:
     def particles(self, dataset_id: str, payload: ParticleRequest) -> ParticleResponse:
         dataset = self._get(dataset_id)
         revision = self.repository.active_revision(dataset)
-        frame = self._read_frame(revision.storage_path)
         profile = revision.profile
+        all_fields = [column["name"] for column in profile["columns"]]
         numeric_fields = [
             column["name"] for column in profile["columns"] if column["kind"] == "numeric"
         ]
@@ -164,14 +179,32 @@ class DatasetService:
         y_field = self._numeric_mapping(payload.y, mapping.get("y"), numeric_fields, x_field)
         z_field = self._numeric_mapping(payload.z, mapping.get("z"), numeric_fields, y_field)
         color_field = payload.color or mapping.get("color")
-        if color_field and color_field not in frame.columns:
+        if color_field and color_field not in all_fields:
             raise AppError(f"Unknown color field: {color_field}", "field_not_found", 404)
 
-        sample_size = min(payload.limit, self.settings.particle_sample_rows, len(frame))
+        sample_size = min(payload.limit, self.settings.particle_sample_rows, dataset.row_count)
         if sample_size == 0:
             return ParticleResponse(dataset_id=dataset.id, mapping={}, points=[])
-        positions = np.linspace(0, len(frame) - 1, sample_size, dtype=int)
-        sampled = frame.iloc[positions].reset_index(drop=True)
+        positions = np.linspace(0, dataset.row_count - 1, sample_size, dtype=int)
+        label_field = color_field or next(
+            (
+                column["name"]
+                for column in profile["columns"]
+                if column["kind"] in {"text", "categorical"}
+            ),
+            None,
+        )
+        projected_fields = list(
+            dict.fromkeys(
+                all_fields[:8]
+                + [
+                    field
+                    for field in (x_field, y_field, z_field, color_field, label_field)
+                    if field
+                ]
+            )
+        )
+        sampled = read_sample(revision.storage_path, positions, projected_fields)
         x_values = self._axis(sampled, x_field, 0)
         y_values = self._axis(sampled, y_field, 1)
         z_values = self._axis(sampled, z_field, 2)
@@ -181,17 +214,9 @@ class DatasetService:
             else ["Data"] * sample_size
         )
         color_lookup = {
-            category: PARTICLE_COLORS[index % len(PARTICLE_COLORS)]
+            category: particle_color(index)
             for index, category in enumerate(dict.fromkeys(categories))
         }
-        label_field = color_field or next(
-            (
-                column["name"]
-                for column in profile["columns"]
-                if column["kind"] in {"text", "categorical"}
-            ),
-            None,
-        )
 
         points = []
         for index, row in sampled.iterrows():
@@ -225,6 +250,7 @@ class DatasetService:
         self.repository.delete(dataset)
         for path in paths:
             path.unlink(missing_ok=True)
+        clear_frame_cache()
         directory = self.storage_root / dataset_id
         if directory.exists() and not any(directory.iterdir()):
             directory.rmdir()
@@ -294,15 +320,11 @@ class DatasetService:
         )
 
     def _write_frame(self, dataset_id: str, revision: int, frame: pd.DataFrame) -> Path:
-        directory = self.storage_root / dataset_id
-        directory.mkdir(parents=True, exist_ok=True)
-        path = directory / f"revision-{revision}.jsonl"
-        frame.to_json(path, orient="records", lines=True, date_format="iso", force_ascii=False)
-        return path.resolve()
+        return write_frame(self.storage_root, dataset_id, revision, frame)
 
     @staticmethod
     def _read_frame(path: str) -> pd.DataFrame:
-        return pd.read_json(path, orient="records", lines=True).convert_dtypes()
+        return read_frame(path)
 
     @staticmethod
     def _validate_columns(frame: pd.DataFrame, columns: list[str | None]) -> None:
@@ -365,25 +387,30 @@ def build_demo_frame() -> pd.DataFrame:
     rng = np.random.default_rng(27)
     rows = 180
     departments = np.array(["Design", "Science", "Business", "Engineering"])
-    activities = np.array(["Research", "Sports", "Reading", "Community"])
-    dates = pd.date_range("2026-02-01", periods=rows, freq="D")
     study_hours = np.clip(rng.normal(4.8, 1.5, rows), 0.5, 10)
     sleep_hours = np.clip(rng.normal(7.1, 0.9, rows), 4, 9.5)
-    activity = activities[np.arange(rows) % len(activities)]
     score = 52 + study_hours * 5.3 + sleep_hours * 1.8 + rng.normal(0, 5, rows)
-    satisfaction = np.clip(48 + sleep_hours * 5 + rng.normal(0, 8, rows), 20, 100)
+    attendance = np.clip(0.68 + study_hours * 0.035 + rng.normal(0, 0.04, rows), 0.55, 1)
+    wellbeing = np.clip(2 + sleep_hours * 0.75 + rng.normal(0, 0.8, rows), 1, 10)
     frame = pd.DataFrame(
         {
-            "date": dates,
+            "student_id": [f"S{index + 1:03d}" for index in range(rows)],
             "department": departments[np.arange(rows) % len(departments)],
-            "activity": activity,
             "study_hours": np.round(study_hours, 1),
             "sleep_hours": np.round(sleep_hours, 1),
+            "attendance_rate": np.round(attendance, 2),
             "course_score": np.round(score, 1),
-            "monthly_expense": np.round(np.clip(rng.normal(1850, 430, rows), 500, 4200), 0),
-            "satisfaction": np.round(satisfaction, 0),
+            "wellbeing": np.round(wellbeing, 0),
         }
     )
     frame.loc[[18, 77, 132], "sleep_hours"] = pd.NA
-    frame.loc[150, "monthly_expense"] = 6800
+    frame.loc[150, "course_score"] = 120
     return frame.convert_dtypes()
+
+
+def particle_color(index: int) -> str:
+    if index < len(PARTICLE_BASE_COLORS):
+        return PARTICLE_BASE_COLORS[index]
+    hue = (index * 0.618_033_988_75) % 1
+    red, green, blue = colorsys.hsv_to_rgb(hue, 0.52, 0.96)
+    return f"#{round(red * 255):02x}{round(green * 255):02x}{round(blue * 255):02x}"

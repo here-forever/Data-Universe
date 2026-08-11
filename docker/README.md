@@ -1,6 +1,6 @@
-# Docker Development
+# Docker 部署
 
-Compose 只启动新系统所需的 FastAPI 后端和 Vite 前端。SQLite、数据修订与报告导出共同保存在 `backend_storage` 卷中，不需要 PostgreSQL、Redis 或任务 worker。
+Compose 只启动新系统所需的 FastAPI 后端和 Nginx 静态前端。SQLite、数据修订与报告导出共同保存在 `backend_storage` 卷中，不需要 PostgreSQL、Redis 或任务 worker。后端镜像启动时自动执行 Alembic 迁移，并以非 root 用户运行。
 
 ```powershell
 docker compose up --build

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from app.data.profiler import profile_frame
-from app.insights.service import chart_recommendations
+from app.insights.charts import chart_recommendations
 
 
 def test_recommendations_rank_strong_numeric_relationship_first() -> None:

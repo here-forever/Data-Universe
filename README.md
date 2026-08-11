@@ -51,7 +51,7 @@ CSV / Excel / JSON / TXT
 
 ```powershell
 cd backend
-uv sync --extra dev
+uv sync --frozen --extra dev
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
@@ -137,12 +137,15 @@ npm run build
 npm run format
 ```
 
+也可在仓库根目录执行 `make install`、`make verify`、`make migrate`、`make api` 与 `make docker` 使用统一入口。
+
 后端测试覆盖四种文件接入、画像、版本化清洗、EDA、智能图表推荐、联动筛选、自然语言问数、高级统计、粒子数据、WebSocket、故事编辑和两类导出。
 
 ## 文档
 
 - [系统使用手册](docs/USER_GUIDE.md)
 - [重建范围与验收映射](docs/REBUILD_PLAN.md)
+- [性能验收基线](docs/PERFORMANCE_BASELINE.md)
 - [原始需求文档](docs/instruction.md)
 - [后端开发说明](backend/README.md)
 - [前端开发说明](frontend/README.md)
